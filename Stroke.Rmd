@@ -1,0 +1,293 @@
+---
+title: "Project"
+subtitle: "Creating Value Through Data Mining"
+author: "Malou-Tinette Kouango & Veronica Rowe"
+date: "`r Sys.Date()`"
+output: html_document
+--- 
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Project Stroke Prediction Dataset 
+# Clearing the console
+```{r,warning=F,message=F}
+#clear all the console
+list=ls()
+rm(list=ls()) 
+cat("\014")
+ls()
+```
+
+#Reading the Stroke dataset
+```{r}
+Stroke <- read.csv(file.choose())
+```
+
+
+# Loading the relevant packages
+```{r}
+library(ggplot2) 
+library(FNN)
+library(dummies)
+library(e1071)
+library (caret)
+library(reshape2)
+library(dplyr)
+library(class)
+```
+
+ 
+### Exposing the data structure
+```{r}
+str(Stroke)
+```
+### We have 12 variables in the Stroke dataset. We have different type of data. Our outcome variable "Stroke" is a binary outcome, 1 being the person has had a stroke and 0 meaning that they haven't had a stroke. 
+
+
+
+```{r}
+sapply(Stroke, function(x) length(unique(x)))
+```
+#### Using sapply function from TP1 to find out more about the variables. We realise that in gender, there is only one observation as categorised as "other". To simplify our analysis, we have disregarded the row with that observation, as it not significant enough to be taken into consideration (1/5110 = 0.01956947%) (row/observation number 3117). We will disregard the ID column as it has no impact on our outcome variable Stroke. 
+
+## Finding out information on our outcome variable
+```{r}
+table(Stroke$stroke)
+```
+#### We see that 249 people had a stroke and 4861 did not. We have an unbalanced outcome. 
+
+## Visualising numerical variables. 
+```{r}
+quantitative_data <- (Stroke[,c(2:12)])
+quantitative_data_melt <- melt(quantitative_data)
+quantitative_data_means <-  quantitative_data_melt %>% group_by(variable) %>% summarise(mean.x = mean(value))
+quantitative_data_median<- quantitative_data_melt %>% group_by(variable) %>% summarise(median.x = median(value))
+
+quantitative_data_hist <- ggplot(data = quantitative_data_melt, aes(value)) + geom_histogram(fill="transparent",color = "black") + facet_wrap(~variable, scale="free", ncol = 4) + geom_vline(aes(xintercept = mean.x),quantitative_data_means, color = "blue") +  geom_vline(aes(xintercept = median.x),quantitative_data_median, color = "red")  + theme_classic() 
+
+quantitative_data_hist
+```
+#### In the histograms, we see that the average age of the customer sample is 45. The average professional experience is 20 years. The average income is 65'000 $ annually. The average spending on Credit Card is 1'500$ monthly. As for the morgage expenses we see that the biggest category do not have any (median result & histogram visually). However the mean is aroung 50'000$. Income & CCAvg are a little bit right skewed, meaning that the median is a little smaller than the mean (the above analysis is based on the mean). We must be aware of that because it changes the distribution and maybe looking at the median is more relavant than the mean
+
+#### Boxplot visualisation for variables 6 & 8 to 14
+```{r}
+par(mfrow = c(2, 3))
+boxplot(id~hypertension,data = Stroke, main = "Hypertension distribution")
+boxplot(id~heart_disease,data = Stroke,  main = "Heart disease distribution")
+boxplot(id~ever_married,data = Stroke,  main = "Marriage status distribution")
+boxplot(id~work_type,data = Stroke,  main = "Work Type distribution")
+boxplot(id~Residence_type,data = Stroke,  main = "Residence type distribution")
+boxplot(id~smoking_status,data = Stroke,  main = "Smoking status distribution")
+boxplot(id~stroke,data = Stroke,  main = "Stroke distribution")
+```
+#### We see that most variables are evenly distributed, roughly same weights ("50% of the sample have the account and the other 50% have not, for the variables separated into 2 categories"). We see that there is a slight majority of people not accepting the Personal Loan (mean of 0 is higher than the one of 1). I am skeptical of these results as above we saw that less than 10% took the Loan(PL is 1), however in the boxplot it seems like thez are nearlz on the same level.
+
+
+## a. Classification of a particular customer
+#### Transforming the categorical variables with more than 2 categories into dummy variables (Here it concerns variables 6 & 8, Family & Education)
+
+```{r}
+set.seed(1)
+Edu_Dummies <- cbind( UB[1:7], dummy(UB$Education, sep = "_"), UB[9:14])
+names(Edu_Dummies)[8:10] <- c("Edu1","Edu2","Edu3")
+Edu_Dummies
+```
+#### Removing predictors ID & Zip Code (variables 1 & 5)
+```{r}
+UB2 <- Edu_Dummies[,-c(1,5)]
+```
+
+#### Creating the new customer
+```{r}
+Customer <- data.frame(40,10,84,2,2,0,1,0,0,0,0,1,1)
+names(Customer)<- names(UB2)[-10]
+Customer
+```
+#### Partitioning the 2 groups (60% in Training, 40% in Valid) & normalizing the data 
+```{r}
+Train <- sample(row.names(UB), 0.6*dim(UB)[1])
+Valid <- setdiff(row.names(UB), Train)
+Train <- UB2[Train, ]
+Valid <- UB2[Valid, ]
+
+# initialize normalized training, validation data, complete data frames to originals
+Train_norm <- Train
+Valid_norm <- Valid
+UB_normalized <- UB2
+```
+
+
+#### From the course book p.177
+#### Initializing training, validation data, using preProcess()
+```{r}
+
+# use preProcess() from the caret package to normalize the variables Age, experience, Income, CCAvg, Mortgage (we must adapt this to UB2 where ID and ZIP Code have been taken out)
+Value.norm <- preProcess(Train[, c(1,2,3,5,9)], method= "range")
+
+Train_norm[, c(1,2,3,5,9)] <- predict(Value.norm, Train[, c(1,2,3,5,9)])
+Valid_norm[, c(1,2,3,5,9)] <- predict(Value.norm, Valid[, c(1,2,3,5,9)])
+UB_normalized[, c(1,2,3,5,9)] <- predict(Value.norm, UB2[, c(1,2,3,5,9)])
+New_norm <- predict(Value.norm, Customer)
+```
+
+#### We check out the structure of both our Valid and Train groups
+```{r}
+str(Train_norm)
+```
+
+```{r}
+str(Valid_norm)
+```
+#### The data set is correctly separated into 60% (3'000 obs) in T and 40% in V (2'000 obs)
+
+## Testing the model with supposition that knn is equal to 1 on the Customer
+```{r}
+Train_norm$Personal.Loan = as.factor(Train_norm$Personal.Loan)
+
+customer_knn_1 = FNN::knn(train = Train_norm[,-10], 
+                      cl = Train_norm$Personal.Loan,
+                      test = New_norm, k = 1, prob = T)
+
+customer_knn_1 
+```
+#### With the Levels result 0, this means that the PL variable is 0, meaning that this person would not accept the Loan Offer. 
+
+## Creating the Confusion Matrix for the customers in general
+```{r}
+predictive_knn_1  = FNN::knn(train = Train_norm[,-c(10)], 
+                           cl = Train_norm$Personal.Loan, 
+                           test = Valid_norm[,-10], k = 1, prob = T)
+```
+
+### Table of Validation group & k equal 1.
+```{r}
+table(Valid_norm$Personal.Loan,predictive_knn_1)
+```
+#### We see that in the validation data, there are 147 customers are predicted and actually take out the Personal loan. The majority will not take the Loan offer (True negatives are 1765). There are 58 false negatives (the prediction predicts that they won't take a Loan but they do, 58/2000 is 2.9%) , and 30 false positives (the prediction says that they will take a Loan but they don't, 30/2000 isb 1.5%). The confusion matrix below, lets us see more in detail the specificity, accuracy, sensitivity values.
+
+## Creating the Confusion Matrix for the customers in general
+```{r}
+caret::confusionMatrix(data = predictive_knn_1, as.factor(Valid_norm$Personal.Loan), positive = "1")
+```
+#### We see that there is a small p-value that is a good sign. Moreover, the accuracy is not bad as it is of 0.956. We know that the probability of being classified correctly is 95.6%. This is a reliable knn prediction with k value 1. We have only seen the notions of sensitivity and specificity. We see that the specificity value is quite high (98.33%) meaning that C1 is nearly always well classified, however the classification of C0 is not so performant (sensitivity is 71.71%). The best is using specificity. 
+
+## b. Choice of k
+
+```{r}
+
+# initialize a data frame with two columns: k, and accuracy.
+accuracy.df <- data.frame(k = seq(1, 14, 1), accuracy = rep(0, 14))
+# compute knn for different k on validation.
+for(i in 1:14) {
+knn.pred <- knn(train = Train_norm[, -c(1,5,10)], test = Valid_norm[, -c(1,5,10)],
+cl = Train_norm$Personal.Loan, k = i)
+accuracy.df[i, 2] <- confusionMatrix(knn.pred, positive = "1", Valid_norm[, 3])$overall[1]}
+head(accuracy.df)
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+```{r}
+
+ctrl_acc = trainControl(method = "cv",
+                    number = 10,)
+set.seed(1)
+knnfit_acc = train(Personal.Loan ~ ., 
+               data = Train_norm,
+               method = "knn",
+               trControl = ctrl_acc,
+               tuneGrid = expand.grid(k = seq(50)),
+               )
+plot(knnfit_acc, main = "Accuracy vs K values", ylab = "Accuracy (CV)")
+```
+
+
+
+## c. Confusion matrix for the validation data 
+```{r}
+
+predictive_knn_2  = FNN::knn(train = Train_norm[,-c(10)], 
+                           cl = Train_norm$Personal.Loan, 
+                           test = Valid_norm[,-10], k = ?, prob = T)
+
+
+caret::confusionMatrix(data = predictive_knn_2, as.factor(Valid_norm$Personal.Loan), positive = "1")
+
+
+
+
+
+
+```
+
+
+## d. Another Customer
+```{r}
+
+Customer_2 <- data.frame(40,10,84,2,2,0,1,0,0,0,0,1,1)
+names(Customer_2)<- names(UB2)[-10]
+Customer_2
+```
+
+## e. Creating & Comparing the confusion matrix 
+#### Separating the 3 categories
+```{r}
+set.seed(1)
+Train_50 <- sample(rownames(UB2), dim(UB2)[1]*0.5)
+Valid_30 <- sample(setdiff(rownames(UB2), Train_50), dim(UB2)[1]*0.3)
+Test_20 <- setdiff(rownames(UB2), union(Train_50, Valid_30))
+```
+#Creaating the data 
+```{r}                           
+Train_50_final <- UB2[Train_50,]
+Valid_30_final <- UB2[Valid_30,]
+Test_20_final <- UB2[Test_20,]
+```
+
+```{r}
+# initialize normalized training, validation data, complete data frames to originals
+Train_50norm <- Train_50_final
+Valid_30norm <- Valid_30_final
+Test_20norm <- Test_20_final
+UB_norm <- UB2
+# use preProcess() from the caret package to normalize the variables.
+Value.norm.point.e <- preProcess(Train_50_final[, c(1,2,3,5,9)], method= "range")
+
+Train_50norm [, c(1,2,3,5,9)] <- predict(Value.norm.point.e, Train_50_final[, c(1,2,3,5,9)])
+Valid_30norm[, c(1,2,3,5,9)] <- predict(Value.norm.point.e, Valid_30_final[, c(1,2,3,5,9)])
+Test_20norm [, c(1,2,3,5,9)] <- predict(Value.norm.point.e, Test_20_final[, c(1,2,3,5,9)])
+UB_norm[, c(1,2,3,5,9)] <- predict(Value.norm.point.e, UB2[, c(1,2,3,5,9)])
+New_norm.e <- predict(Value.norm.point.e, Customer_2)
+```
+
+## Testing the model with supposition that knn is equal to 1 on the Customer
+```{r}
+Train_50norm$Personal.Loan = as.factor(Train_50norm$Personal.Loan)
+
+Customer_2_with_best_knn = FNN::knn(train = Train_50norm[,-10], 
+                      cl = Train_50norm$Personal.Loan,
+                      test = New_norm.e, k = 1, prob = T)
+
+Customer_2_with_best_knn 
+```
+
+## Creating the Confusion Matrix for the customers in general
+```{r}
+caret::confusionMatrix(data = Customer_2_with_best_knn, as.factor(Valid30_norm$Personal.Loan), positive = "1")
