@@ -66,13 +66,16 @@ Stroke[,c(2,6:8,11)] <- lapply(Stroke[,c(2,6:8,11)], as.factor)
 sapply(Stroke, function(x) length(unique(x)))
 summary(Stroke)
 ```
-#### Using sapply function from TP1 to find out more about the variables. We realise that in gender, there is only one observation as categorised as "Other". To simplify our analysis, we will later disregard the row with that observation, as it not significant enough to be taken into consideration (1/5110 = 0.01956947%) (row/observation number id = 56'156/ row = 3117). We will also disregard the ID column as it only represent the patient id in the hospital and thus has no impact on our outcome variable of interest Stroke.
+#### Using sapply function from TP1 to find out more about the variables. We realise that in gender, there is only one observation as categorised as "Other". 
+### To simplify our analysis, we will later disregard the row with that observation, as it not significant enough to be taken into consideration (1/5110 = 0.01956947%) (row/observation number id = 56'156/ row = 3117). We will also disregard the ID column as it only represent the patient id in the hospital and thus has no impact on our outcome variable of interest Stroke.
 
 ## Finding out information on our outcome variable
 ```{r}
 table(Stroke$stroke)
 ```
 #### We see that 249 people had a stroke and 4861 did not. We have an unbalanced binary outcome. 
+### WE MUST ...!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
 
 ## Visualising numerical variables. 
 ```{r, warning = FALSE}
