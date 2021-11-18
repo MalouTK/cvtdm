@@ -22,9 +22,8 @@ ls()
 
 #Reading the Stroke dataset
 ```{r}
-Stroke <- read.csv(file.choose())
+Stroke <- read.csv("C:/Users/veron/Downloads/archive/healthcare-dataset-stroke-data.csv")
 ```
-
 
 # Loading the relevant packages
 ```{r}
@@ -46,7 +45,6 @@ str(Stroke)
 ### We have 12 variables in the Stroke dataset. We have different type of data. Our outcome variable "Stroke" is a binary outcome, 1 being the person has had a stroke and 0 meaning that they haven't had a stroke. 
 
 
-
 ```{r}
 sapply(Stroke, function(x) length(unique(x)))
 ```
@@ -60,7 +58,7 @@ table(Stroke$stroke)
 
 ## Visualising numerical variables. 
 ```{r}
-quantitative_data <- (Stroke[,c(2:12)])
+quantitative_data <- (Stroke[,c(3,9)])
 quantitative_data_melt <- melt(quantitative_data)
 quantitative_data_means <-  quantitative_data_melt %>% group_by(variable) %>% summarise(mean.x = mean(value))
 quantitative_data_median<- quantitative_data_melt %>% group_by(variable) %>% summarise(median.x = median(value))
@@ -69,7 +67,8 @@ quantitative_data_hist <- ggplot(data = quantitative_data_melt, aes(value)) + ge
 
 quantitative_data_hist
 ```
-#### In the histograms, we see that the average age of the customer sample is 45. The average professional experience is 20 years. The average income is 65'000 $ annually. The average spending on Credit Card is 1'500$ monthly. As for the morgage expenses we see that the biggest category do not have any (median result & histogram visually). However the mean is aroung 50'000$. Income & CCAvg are a little bit right skewed, meaning that the median is a little smaller than the mean (the above analysis is based on the mean). We must be aware of that because it changes the distribution and maybe looking at the median is more relavant than the mean
+#### In the histograms, we see that the average age of the patient is in his 40ties and 
+
 
 #### Boxplot visualisation for variables 6 & 8 to 14
 ```{r}
@@ -83,6 +82,12 @@ boxplot(id~smoking_status,data = Stroke,  main = "Smoking status distribution")
 boxplot(id~stroke,data = Stroke,  main = "Stroke distribution")
 ```
 #### We see that most variables are evenly distributed, roughly same weights ("50% of the sample have the account and the other 50% have not, for the variables separated into 2 categories"). We see that there is a slight majority of people not accepting the Personal Loan (mean of 0 is higher than the one of 1). I am skeptical of these results as above we saw that less than 10% took the Loan(PL is 1), however in the boxplot it seems like thez are nearlz on the same level.
+
+
+
+#### Preparing for analysis : 
+
+
 
 
 ## a. Classification of a particular customer
