@@ -35,6 +35,7 @@ library (caret)
 library(reshape2)
 library(dplyr)
 library(class)
+library(naniar)
 ```
 
  
@@ -43,9 +44,21 @@ library(class)
 # Types of variables:
 str(Stroke)
 ```
-### We have 12 variables in the Stroke dataset. We have different type of data. Our outcome variable "Stroke" is a binary outcome, 1 if the person has had a stroke and 0 meaning that they haven't had a stroke. 
 
-Bmi is seen as a character because of the N/A => we must change N/A strings to real NA in R.
+### We have 12 variables in the Stroke dataset. We have different type of data. Our outcome variable "Stroke" is a binary outcome, taking value 1 if the person had a stroke and 0 if they haven't had a stroke. 
+### Bmi is seen as a character because of the N/A => we must change N/A strings to real NA in R, and set the variable as numeric to be able to visualize it in our exploratory graphs.
+### The variables gender, ever_married, work_type, Residence_type and smoking status are seen as character, when they are categorical => we already change them to factor for better data visualization.
+
+```{r}
+# Changing N/A characters in bmi to real NA:
+Stroke = replace_with_na(Stroke, replace = list(bmi = "N/A")) # bmi has NA now
+# Change bmi from character to numerical variable:
+Stroke$bmi <- as.numeric(Stroke$bmi)
+
+# Change character variables as categorical (factor)
+Stroke[,c(2,6:8,11)] <- lapply(Stroke[,c(2,6:8,11)], as.factor)
+#str(Stroke)
+```
 
 
 ```{r}
@@ -53,7 +66,7 @@ Bmi is seen as a character because of the N/A => we must change N/A strings to r
 sapply(Stroke, function(x) length(unique(x)))
 summary(Stroke)
 ```
-#### Using sapply function from TP1 to find out more about the variables. We realise that in gender, there is only one observation as categorised as "other". To simplify our analysis, we have disregarded the row with that observation, as it not significant enough to be taken into consideration (1/5110 = 0.01956947%) (row/observation number 3117). We will disregard the ID column as it has no impact on our outcome variable Stroke. 
+#### Using sapply function from TP1 to find out more about the variables. We realise that in gender, there is only one observation as categorised as "Other". To simplify our analysis, we will later disregard the row with that observation, as it not significant enough to be taken into consideration (1/5110 = 0.01956947%) (row/observation number id = 56'156/ row = 3117). We will also disregard the ID column as it only represent the patient id in the hospital and thus has no impact on our outcome variable of interest Stroke.
 
 ## Finding out information on our outcome variable
 ```{r}
@@ -92,85 +105,62 @@ boxplot(id~stroke,data = Stroke,  main = "Stroke distribution")
 
 #### Preparing for analysis : 
 
+````{r}
+# Remove only row with gender = "Other"
+Stroke = Stroke[-3117,]
+# Remove id row
+Stroke = Stroke[,-1]
+```
 
 
-
-## a. Classification of a particular customer
-#### Transforming the categorical variables with more than 2 categories into dummy variables (Here it concerns variables 6 & 8, Family & Education)
+#### Transforming the categorical variables with more than 2 categories into dummy variables (Here it concerns variables work_type (6) & smoking_status (10))
 
 ```{r}
 set.seed(1)
-Edu_Dummies <- cbind( UB[1:7], dummy(UB$Education, sep = "_"), UB[9:14])
-names(Edu_Dummies)[8:10] <- c("Edu1","Edu2","Edu3")
-Edu_Dummies
-```
-#### Removing predictors ID & Zip Code (variables 1 & 5)
-```{r}
-UB2 <- Edu_Dummies[,-c(1,5)]
+# Put work_type as dummy:
+work_type_Dummies <- cbind( Stroke[1:5], dummy(Stroke$work_type, sep = "_"), Stroke[7:11])
+names(work_type_Dummies)[6:10] <- c("children","Govt_job", "Never_Worked", "Private", "Self-employed")
+work_type_Dummies
+Stroke <- work_type_Dummies
 ```
 
-#### Creating the new customer
 ```{r}
-Customer <- data.frame(40,10,84,2,2,0,1,0,0,0,0,1,1)
-names(Customer)<- names(UB2)[-10]
-Customer
+# Put smoking_status as dummy:
+smoking_status_Dummies <- cbind( Stroke[1:13], dummy(Stroke$smoking_status, sep = "_"), Stroke[15])
+names(smoking_status_Dummies)[14:17] <- c("formerly_smoked", "never_smoked", "smokes", "unknown")
+smoking_status_Dummies
+Stroke <- smoking_status_Dummies
 ```
+
+
 #### Partitioning the 2 groups (60% in Training, 40% in Valid) & normalizing the data 
 ```{r}
-Train <- sample(row.names(UB), 0.6*dim(UB)[1])
-Valid <- setdiff(row.names(UB), Train)
-Train <- UB2[Train, ]
-Valid <- UB2[Valid, ]
-
-# initialize normalized training, validation data, complete data frames to originals
-Train_norm <- Train
-Valid_norm <- Valid
-UB_normalized <- UB2
+Train <- sample(row.names(Stroke), 0.6*dim(Stroke)[1])
+Valid <- setdiff(row.names(Stroke), Train)
+Train <- Stroke[Train, ]
+Valid <- Stroke[Valid, ]
+dim(Train)
+dim(Valid)
+# The data has been correctly partitioned into 60% (3'065 obs) in T and 40% in V (2'044 obs)
 ```
 
 
-#### From the course book p.177
 #### Initializing training, validation data, using preProcess()
 ```{r}
+# initialize normalized training and validation sets:
+Train_norm <- Train
+Valid_norm <- Valid
+Stroke_normalized <- Stroke
 
-# use preProcess() from the caret package to normalize the variables Age, experience, Income, CCAvg, Mortgage (we must adapt this to UB2 where ID and ZIP Code have been taken out)
-Value.norm <- preProcess(Train[, c(1,2,3,5,9)], method= "range")
+# use preProcess() from the caret package to normalize the variables age, average_glucose and bmi:
+Value.norm <- preProcess(Train[, c(2,12,13)], method= "range")
 
-Train_norm[, c(1,2,3,5,9)] <- predict(Value.norm, Train[, c(1,2,3,5,9)])
-Valid_norm[, c(1,2,3,5,9)] <- predict(Value.norm, Valid[, c(1,2,3,5,9)])
-UB_normalized[, c(1,2,3,5,9)] <- predict(Value.norm, UB2[, c(1,2,3,5,9)])
-New_norm <- predict(Value.norm, Customer)
+Train_norm[, c(2,12,13)] <- predict(Value.norm, Train[, c(2,12,13)])
+Valid_norm[, c(2,12,13)] <- predict(Value.norm, Valid[, c(2,12,13)])
+Stroke_normalized[, c(2,12,13)] <- predict(Value.norm, Stroke[, c(2,12,13)])
 ```
 
-#### We check out the structure of both our Valid and Train groups
-```{r}
-str(Train_norm)
-```
-
-```{r}
-str(Valid_norm)
-```
-#### The data set is correctly separated into 60% (3'000 obs) in T and 40% in V (2'000 obs)
-
-## Testing the model with supposition that knn is equal to 1 on the Customer
-```{r}
-Train_norm$Personal.Loan = as.factor(Train_norm$Personal.Loan)
-
-customer_knn_1 = FNN::knn(train = Train_norm[,-10], 
-                      cl = Train_norm$Personal.Loan,
-                      test = New_norm, k = 1, prob = T)
-
-customer_knn_1 
-```
-#### With the Levels result 0, this means that the PL variable is 0, meaning that this person would not accept the Loan Offer. 
-
-## Creating the Confusion Matrix for the customers in general
-```{r}
-predictive_knn_1  = FNN::knn(train = Train_norm[,-c(10)], 
-                           cl = Train_norm$Personal.Loan, 
-                           test = Valid_norm[,-10], k = 1, prob = T)
-```
-
+########################################################
 ### Table of Validation group & k equal 1.
 ```{r}
 table(Valid_norm$Personal.Loan,predictive_knn_1)
