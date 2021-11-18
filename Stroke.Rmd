@@ -12,7 +12,7 @@ knitr::opts_chunk$set(echo = TRUE)
 
 # Project Stroke Prediction Dataset 
 # Clearing the console
-```{r,warning=F,message=F}
+```{r, warning = F,message = F, echo = TRUE}
 #clear all the console
 list=ls()
 rm(list=ls()) 
@@ -22,11 +22,11 @@ ls()
 
 #Reading the Stroke dataset
 ```{r}
-Stroke <- read.csv("C:/Users/veron/Downloads/archive/healthcare-dataset-stroke-data.csv")
+Stroke <- read.csv(file.choose())
 ```
 
 # Loading the relevant packages
-```{r}
+```{r, warning=FALSE}
 library(ggplot2) 
 library(FNN)
 library(dummies)
@@ -40,13 +40,18 @@ library(class)
  
 ### Exposing the data structure
 ```{r}
+# Types of variables:
 str(Stroke)
 ```
-### We have 12 variables in the Stroke dataset. We have different type of data. Our outcome variable "Stroke" is a binary outcome, 1 being the person has had a stroke and 0 meaning that they haven't had a stroke. 
+### We have 12 variables in the Stroke dataset. We have different type of data. Our outcome variable "Stroke" is a binary outcome, 1 if the person has had a stroke and 0 meaning that they haven't had a stroke. 
+
+Bmi is seen as a character because of the N/A => we must change N/A strings to real NA in R.
 
 
 ```{r}
+# Show how many different values there is for each variable
 sapply(Stroke, function(x) length(unique(x)))
+summary(Stroke)
 ```
 #### Using sapply function from TP1 to find out more about the variables. We realise that in gender, there is only one observation as categorised as "other". To simplify our analysis, we have disregarded the row with that observation, as it not significant enough to be taken into consideration (1/5110 = 0.01956947%) (row/observation number 3117). We will disregard the ID column as it has no impact on our outcome variable Stroke. 
 
@@ -54,10 +59,10 @@ sapply(Stroke, function(x) length(unique(x)))
 ```{r}
 table(Stroke$stroke)
 ```
-#### We see that 249 people had a stroke and 4861 did not. We have an unbalanced outcome. 
+#### We see that 249 people had a stroke and 4861 did not. We have an unbalanced binary outcome. 
 
 ## Visualising numerical variables. 
-```{r}
+```{r, warning = FALSE}
 quantitative_data <- (Stroke[,c(3,9)])
 quantitative_data_melt <- melt(quantitative_data)
 quantitative_data_means <-  quantitative_data_melt %>% group_by(variable) %>% summarise(mean.x = mean(value))
@@ -67,10 +72,10 @@ quantitative_data_hist <- ggplot(data = quantitative_data_melt, aes(value)) + ge
 
 quantitative_data_hist
 ```
-#### In the histograms, we see that the average age of the patient is in his 40ties and 
+#### In the histograms, we see that the average age of the patient is in his 40ties and the average glucose is right-skewed.
 
 
-#### Boxplot visualisation for variables 6 & 8 to 14
+#### Boxplot visualisation
 ```{r}
 par(mfrow = c(2, 3))
 boxplot(id~hypertension,data = Stroke, main = "Hypertension distribution")
