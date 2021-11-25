@@ -26,7 +26,7 @@ Stroke <- read.csv(file.choose())
 ```
 
 # Loading the relevant packages
-```{r, warning=FALSE}
+```{r, message =FALSE, warning=FALSE}
 library(ggplot2) 
 library(FNN)
 library(dummies)
@@ -36,6 +36,7 @@ library(reshape2)
 library(dplyr)
 library(class)
 library(naniar)
+require(ellipse)
 ```
 
  
@@ -45,19 +46,24 @@ library(naniar)
 str(Stroke)
 ```
 
-### We have 12 variables in the Stroke dataset. We have different type of data. Our outcome variable "Stroke" is a binary outcome, taking value 1 if the person had a stroke and 0 if they haven't had a stroke. 
+### We have 12 variables in the Stroke dataset, each having different types. Our outcome variable "Stroke" is a binary outcome, taking value 1 if the person had a stroke and 0 if they haven't had a stroke. => change it as factor
 ### Bmi is seen as a character because of the N/A => we must change N/A strings to real NA in R, and set the variable as numeric to be able to visualize it in our exploratory graphs.
-### The variables gender, ever_married, work_type, Residence_type and smoking status are seen as character, when they are categorical => we already change them to factor for better data visualization.
+### The variables gender, ever_married, work_type, Residence_type and smoking status are seen as character, when they are categorical => we must change them to factor for better data visualization.
+### The variable id (= id of the patient in the hospital) is irrelevant to our analysis => we remove it
 
 ```{r}
 # Changing N/A characters in bmi to real NA:
 Stroke = replace_with_na(Stroke, replace = list(bmi = "N/A")) # bmi has NA now
 # Change bmi from character to numerical variable:
 Stroke$bmi <- as.numeric(Stroke$bmi)
+Stroke$stroke <- as.factor(Stroke$stroke)
 
 # Change character variables as categorical (factor)
 Stroke[,c(2,6:8,11)] <- lapply(Stroke[,c(2,6:8,11)], as.factor)
-#str(Stroke)
+
+# Remove id row
+Stroke = Stroke[,-1]
+str(Stroke)
 ```
 
 
@@ -73,11 +79,38 @@ summary(Stroke)
 ```{r}
 table(Stroke$stroke)
 ```
-#### We see that 249 people had a stroke and 4861 did not. We have an unbalanced binary outcome. 
-### WE MUST ...!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+#### We see that 249 people had a stroke and 4861 did not. We have an unbalanced binary outcome. => we must put results in context
 
 
 ## Visualising numerical variables. 
+```{r}
+# Visualize the data:
+# gender:
+ggplot(data = Stroke, aes(x = gender, fill = stroke)) + geom_bar() + ggtitle("Gender vs Stroke")
+# age:
+ggplot(data = Stroke, aes(x = age, fill = stroke)) + geom_boxplot() + ggtitle("Age vs Stroke")
+ggplot(data = Stroke, aes(x = age, fill = stroke)) + geom_histogram() + ggtitle("Age vs Stroke")
+# hypertension:
+ggplot(data = Stroke, aes(x = hypertension, fill = stroke)) + geom_bar() + ggtitle("Hypertension vs Stroke")
+# heart disease:
+ggplot(data = Stroke, aes(x = heart_disease, fill = stroke)) + geom_bar() + ggtitle("Heart disease vs Stroke")
+# ever married:
+ggplot(data = Stroke, aes(x = ever_married, fill = stroke)) + geom_bar() + ggtitle("Ever married vs Stroke")
+# work type:
+ggplot(data = Stroke, aes(x = work_type, fill = stroke)) + geom_bar() + ggtitle("Work type vs Stroke")
+# Residence type:
+ggplot(data = Stroke, aes(x = Residence_type, fill = stroke)) + geom_bar() + ggtitle("Residence type vs Stroke")
+# Average glucose level:
+ggplot(data = Stroke, aes(x = avg_glucose_level, fill = stroke)) + geom_boxplot() + ggtitle("Average glucose level vs Stroke")
+ggplot(data = Stroke, aes(x = avg_glucose_level, fill = stroke)) + geom_histogram() + ggtitle("Average glucose level vs Stroke")
+# BMI:
+ggplot(data = Stroke, aes(x = bmi, fill = stroke)) + geom_boxplot() + ggtitle("BMI vs Stroke")
+ggplot(data = Stroke, aes(x = bmi, fill = stroke)) + geom_histogram() + ggtitle("BMI vs Stroke")
+# Smoking status:
+ggplot(data = Stroke, aes(x = smoking_status, fill = stroke)) + geom_bar() + ggtitle("Smoking status vs Stroke")
+```
+
+
 ```{r, warning = FALSE}
 quantitative_data <- (Stroke[,c(3,9)])
 quantitative_data_melt <- melt(quantitative_data)
@@ -104,15 +137,11 @@ boxplot(id~stroke,data = Stroke,  main = "Stroke distribution")
 ```
 #### We see that most variables are evenly distributed, roughly same weights ("50% of the sample have the account and the other 50% have not, for the variables separated into 2 categories"). We see that there is a slight majority of people not accepting the Personal Loan (mean of 0 is higher than the one of 1). I am skeptical of these results as above we saw that less than 10% took the Loan(PL is 1), however in the boxplot it seems like thez are nearlz on the same level.
 
-
-
 #### Preparing for analysis : 
 
 ````{r}
 # Remove only row with gender = "Other"
 Stroke = Stroke[-3117,]
-# Remove id row
-Stroke = Stroke[,-1]
 ```
 
 
@@ -120,24 +149,26 @@ Stroke = Stroke[,-1]
 
 ```{r}
 set.seed(1)
+Stroke2 = Stroke
 # Put work_type as dummy:
 work_type_Dummies <- cbind( Stroke[1:5], dummy(Stroke$work_type, sep = "_"), Stroke[7:11])
 names(work_type_Dummies)[6:10] <- c("children","Govt_job", "Never_Worked", "Private", "Self-employed")
 work_type_Dummies
-Stroke <- work_type_Dummies
+Stroke2 <- work_type_Dummies
 ```
 
 ```{r}
 # Put smoking_status as dummy:
-smoking_status_Dummies <- cbind( Stroke[1:13], dummy(Stroke$smoking_status, sep = "_"), Stroke[15])
+smoking_status_Dummies <- cbind( Stroke2[1:13], dummy(Stroke2$smoking_status, sep = "_"), Stroke2[15])
 names(smoking_status_Dummies)[14:17] <- c("formerly_smoked", "never_smoked", "smokes", "unknown")
 smoking_status_Dummies
-Stroke <- smoking_status_Dummies
+Stroke2 <- smoking_status_Dummies
 ```
 
 
 #### Partitioning the 2 groups (60% in Training, 40% in Valid) & normalizing the data 
 ```{r}
+set.seed(1)
 Train <- sample(row.names(Stroke), 0.6*dim(Stroke)[1])
 Valid <- setdiff(row.names(Stroke), Train)
 Train <- Stroke[Train, ]
@@ -156,141 +187,72 @@ Valid_norm <- Valid
 Stroke_normalized <- Stroke
 
 # use preProcess() from the caret package to normalize the variables age, average_glucose and bmi:
-Value.norm <- preProcess(Train[, c(2,12,13)], method= "range")
+Value.norm <- preProcess(Train[, c(2,8,9)], method= "range")
 
-Train_norm[, c(2,12,13)] <- predict(Value.norm, Train[, c(2,12,13)])
-Valid_norm[, c(2,12,13)] <- predict(Value.norm, Valid[, c(2,12,13)])
-Stroke_normalized[, c(2,12,13)] <- predict(Value.norm, Stroke[, c(2,12,13)])
-```
-
-########################################################
-### Table of Validation group & k equal 1.
-```{r}
-table(Valid_norm$Personal.Loan,predictive_knn_1)
-```
-#### We see that in the validation data, there are 147 customers are predicted and actually take out the Personal loan. The majority will not take the Loan offer (True negatives are 1765). There are 58 false negatives (the prediction predicts that they won't take a Loan but they do, 58/2000 is 2.9%) , and 30 false positives (the prediction says that they will take a Loan but they don't, 30/2000 isb 1.5%). The confusion matrix below, lets us see more in detail the specificity, accuracy, sensitivity values.
-
-## Creating the Confusion Matrix for the customers in general
-```{r}
-caret::confusionMatrix(data = predictive_knn_1, as.factor(Valid_norm$Personal.Loan), positive = "1")
-```
-#### We see that there is a small p-value that is a good sign. Moreover, the accuracy is not bad as it is of 0.956. We know that the probability of being classified correctly is 95.6%. This is a reliable knn prediction with k value 1. We have only seen the notions of sensitivity and specificity. We see that the specificity value is quite high (98.33%) meaning that C1 is nearly always well classified, however the classification of C0 is not so performant (sensitivity is 71.71%). The best is using specificity. 
-
-## b. Choice of k
-
-```{r}
-
-# initialize a data frame with two columns: k, and accuracy.
-accuracy.df <- data.frame(k = seq(1, 14, 1), accuracy = rep(0, 14))
-# compute knn for different k on validation.
-for(i in 1:14) {
-knn.pred <- knn(train = Train_norm[, -c(1,5,10)], test = Valid_norm[, -c(1,5,10)],
-cl = Train_norm$Personal.Loan, k = i)
-accuracy.df[i, 2] <- confusionMatrix(knn.pred, positive = "1", Valid_norm[, 3])$overall[1]}
-head(accuracy.df)
-```
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-```{r}
-
-ctrl_acc = trainControl(method = "cv",
-                    number = 10,)
-set.seed(1)
-knnfit_acc = train(Personal.Loan ~ ., 
-               data = Train_norm,
-               method = "knn",
-               trControl = ctrl_acc,
-               tuneGrid = expand.grid(k = seq(50)),
-               )
-plot(knnfit_acc, main = "Accuracy vs K values", ylab = "Accuracy (CV)")
-```
-
-
-
-## c. Confusion matrix for the validation data 
-```{r}
-
-predictive_knn_2  = FNN::knn(train = Train_norm[,-c(10)], 
-                           cl = Train_norm$Personal.Loan, 
-                           test = Valid_norm[,-10], k = ?, prob = T)
-
-
-caret::confusionMatrix(data = predictive_knn_2, as.factor(Valid_norm$Personal.Loan), positive = "1")
-
-
-
-
-
-
-```
-
-
-## d. Another Customer
-```{r}
-
-Customer_2 <- data.frame(40,10,84,2,2,0,1,0,0,0,0,1,1)
-names(Customer_2)<- names(UB2)[-10]
-Customer_2
-```
-
-## e. Creating & Comparing the confusion matrix 
-#### Separating the 3 categories
-```{r}
-set.seed(1)
-Train_50 <- sample(rownames(UB2), dim(UB2)[1]*0.5)
-Valid_30 <- sample(setdiff(rownames(UB2), Train_50), dim(UB2)[1]*0.3)
-Test_20 <- setdiff(rownames(UB2), union(Train_50, Valid_30))
-```
-#Creaating the data 
-```{r}                           
-Train_50_final <- UB2[Train_50,]
-Valid_30_final <- UB2[Valid_30,]
-Test_20_final <- UB2[Test_20,]
+Train_norm[, c(2,8,9)] <- predict(Value.norm, Train[, c(2,8,9)])
+Valid_norm[, c(2,8,9)] <- predict(Value.norm, Valid[, c(2,8,9)])
+Stroke_normalized[, c(2,8,9)] <- predict(Value.norm, Stroke[, c(2,8,9)])
 ```
 
 ```{r}
-# initialize normalized training, validation data, complete data frames to originals
-Train_50norm <- Train_50_final
-Valid_30norm <- Valid_30_final
-Test_20norm <- Test_20_final
-UB_norm <- UB2
-# use preProcess() from the caret package to normalize the variables.
-Value.norm.point.e <- preProcess(Train_50_final[, c(1,2,3,5,9)], method= "range")
+# 1) Logistic Regression
+logit.reg <- glm(stroke ~., data = Train, family = "binomial")
+options(scipen = 999)
+summary(logit.reg)
+```
+## For variables with NA (self-employed and unknown), they are the defaults dummy values; just like genderFemale is the default dummy of the regression and ever_married_No is the default dummy for ever_married:
+- The effect of being male is positive => male have higher propensity of stroke
+- The coefficients effect of the work_type dummies are in comparison to the default value unknown (which is why it has NA).
+- The coefficients effect of the smoking_status dummies are in comparison to the default value self-employed (with NA).
 
-Train_50norm [, c(1,2,3,5,9)] <- predict(Value.norm.point.e, Train_50_final[, c(1,2,3,5,9)])
-Valid_30norm[, c(1,2,3,5,9)] <- predict(Value.norm.point.e, Valid_30_final[, c(1,2,3,5,9)])
-Test_20norm [, c(1,2,3,5,9)] <- predict(Value.norm.point.e, Test_20_final[, c(1,2,3,5,9)])
-UB_norm[, c(1,2,3,5,9)] <- predict(Value.norm.point.e, UB2[, c(1,2,3,5,9)])
-New_norm.e <- predict(Value.norm.point.e, Customer_2)
+The significant predictors are in order (from most influencer to least) age, hypertension and avg_glucose_level.
+
+```{r}
+# Graphs for the significant variables
+# For age:
+mod <- glm(stroke ~ age, data = Train, binomial("logit"))
+coefs <- coef(mod)
+x_plot <- with(Train, seq(min(age), max(age)+25, length.out = 200))
+y_plot <- plogis(coefs[1] + coefs[2] * x_plot)
+
+ggplot(Valid) + geom_point(aes(x=age,y=as.integer(stroke)-1, color=stroke)) + geom_line(aes(x= x_plot, y=y_plot), col = "black", data = data.frame(x_plot,y_plot)) + xlab("Age") + ylab("Stroke") + scale_x_continuous(breaks = seq(0,250,50)) + theme_classic()
+
+# For hypertension:
+mod2 <- glm(stroke ~ hypertension, data = Train, binomial("logit"))
+coefs2 <- coef(mod2)
+x_plot2 <- with(Train, seq(min(hypertension), max(hypertension), length.out = 200))
+y_plot2 <- plogis(coefs2[1] + coefs2[2] * x_plot2)
+
+ggplot(Valid) + geom_point(aes(x=hypertension,y=as.integer(stroke)-1, color=stroke)) + geom_line(aes(x= x_plot2, y=y_plot2), col = "black", data = data.frame(x_plot2,y_plot2)) + xlab("Hypertension") + ylab("Stroke") + scale_x_continuous(breaks = seq(0,250,50)) + theme_classic()
+
+# For average glucose level:
+mod3 <- glm(stroke ~ avg_glucose_level, data = Train, binomial("logit"))
+coefs3 <- coef(mod3)
+x_plot3 <- with(Train, seq(min(avg_glucose_level), max(avg_glucose_level)+25, length.out = 200))
+y_plot3 <- plogis(coefs3[1] + coefs3[2] * x_plot3)
+
+ggplot(Valid) + geom_point(aes(x=avg_glucose_level,y=as.integer(stroke)-1, color=stroke)) + geom_line(aes(x= x_plot3, y=y_plot3), col = "black", data = data.frame(x_plot3,y_plot3)) + xlab("Average glucose") + ylab("Stroke") + scale_x_continuous(breaks = seq(0,250,50)) + theme_classic()
 ```
 
-## Testing the model with supposition that knn is equal to 1 on the Customer
+- Age: The older you get, the more probable it is you get a stroke. The first instances of stroke arises around 30 year of age according to the graph; and it start rising the older you get.
+- Average glucose: the progression of the slope is slower and way less impactful than age; this is to be expected as the variable avg_glucose_level has lower significance in the model.
+
 ```{r}
-Train_50norm$Personal.Loan = as.factor(Train_50norm$Personal.Loan)
-
-Customer_2_with_best_knn = FNN::knn(train = Train_50norm[,-10], 
-                      cl = Train_50norm$Personal.Loan,
-                      test = New_norm.e, k = 1, prob = T)
-
-Customer_2_with_best_knn 
+# Confusion matrix
+pred.lr = predict(logit.reg, Valid[,-18], type = "response")
+confusionMatrix(as.factor(ifelse(pred.lr > 0.5, 1, 0)), Valid$stroke, positive = "1")
+fourfoldplot(confusionMatrix(as.factor(ifelse(pred.lr > 0.5, 1, 0)), Valid$stroke, positive = "1")$table)
 ```
 
-## Creating the Confusion Matrix for the customers in general
+This model is not able to predict any stroke; it is not efficient for the goal of our analysis. It is most probable that we have too many unnecessary variables in our model:
+
+##########################################
 ```{r}
-caret::confusionMatrix(data = Customer_2_with_best_knn, as.factor(Valid30_norm$Personal.Loan), positive = "1")
+logit.reg <- glm(stroke ~ age + hypertension + avg_glucose_level, data = Train_norm, family = "binomial")
+options(scipen = 999)
+summary(logit.reg)
+
+pred.lr = predict(logit.reg, Valid_norm[,-18], type = "response")
+confusionMatrix(as.factor(ifelse(pred.lr > 0.5, 1, 0)), Valid_norm$stroke, positive = "1")
+fourfoldplot(confusionMatrix(as.factor(ifelse(pred.lr > 0.5, 1, 0)), Valid_norm$stroke, positive = "1")$table)
+```
