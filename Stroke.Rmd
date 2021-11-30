@@ -6,11 +6,17 @@ date: "`r Sys.Date()`"
 output: html_document
 --- 
 
+NOTE:
+
+The 
+
+
+---
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-# Project Stroke Prediction Dataset 
+Project- Stroke Prediction Dataset 
 # Clearing the console
 ```{r, warning = F,message = F, echo = TRUE}
 #clear all the console
@@ -37,19 +43,21 @@ library(dplyr)
 library(class)
 library(naniar)
 require(ellipse)
+library(rpart)
+library(rpart.plot)
 ```
 
  
-### Exposing the data structure
+#### EDA- Explortory Data Analysis
 ```{r}
 # Types of variables:
 str(Stroke)
 ```
 
-### We have 12 variables in the Stroke dataset, each having different types. Our outcome variable "Stroke" is a binary outcome, taking value 1 if the person had a stroke and 0 if they haven't had a stroke. => change it as factor
-### Bmi is seen as a character because of the N/A => we must change N/A strings to real NA in R, and set the variable as numeric to be able to visualize it in our exploratory graphs.
-### The variables gender, ever_married, work_type, Residence_type and smoking status are seen as character, when they are categorical => we must change them to factor for better data visualization.
-### The variable id (= id of the patient in the hospital) is irrelevant to our analysis => we remove it
+We have 12 variables in the Stroke dataset, each having different types. Our outcome variable "Stroke" is a binary outcome, taking value 1 if the person had a stroke and 0 if they haven't had a stroke. => change it as factor
+- Bmi is seen as a character because of the N/A => we must change N/A strings to real NA in R, and set the variable as numeric to be able to visualize it in our exploratory graphs.
+- The variables gender, ever_married, work_type, Residence_type and smoking status are seen as character, when they are categorical => we must change them to factor for better data visualization.
+- The variable id (= id of the patient in the hospital) is irrelevant to our analysis => we remove it
 
 ```{r}
 # Changing N/A characters in bmi to real NA:
@@ -57,6 +65,7 @@ Stroke = replace_with_na(Stroke, replace = list(bmi = "N/A")) # bmi has NA now
 # Change bmi from character to numerical variable:
 Stroke$bmi <- as.numeric(Stroke$bmi)
 Stroke$stroke <- as.factor(Stroke$stroke)
+
 
 # Change character variables as categorical (factor)
 Stroke[,c(2,6:8,11)] <- lapply(Stroke[,c(2,6:8,11)], as.factor)
@@ -72,18 +81,23 @@ str(Stroke)
 sapply(Stroke, function(x) length(unique(x)))
 summary(Stroke)
 ```
-#### Using sapply function from TP1 to find out more about the variables. We realise that in gender, there is only one observation as categorised as "Other". 
-### To simplify our analysis, we will later disregard the row with that observation, as it not significant enough to be taken into consideration (1/5110 = 0.01956947%) (row/observation number id = 56'156/ row = 3117). We will also disregard the ID column as it only represent the patient id in the hospital and thus has no impact on our outcome variable of interest Stroke.
+Using sapply function from TP1 to find out more about the variables. We realise that in gender, there is only one observation as categorised as "Other". 
+
+To simplify our analysis, we will later disregard the row with that observation, as it not significant enough to be taken into consideration (1/5110 = 0.01956947%) (row/observation number id = 56'156/ row = 3117). We will also disregard the ID column as it only represent the patient id in the hospital and thus has no impact on our outcome variable of interest Stroke.
 
 ## Finding out information on our outcome variable
 ```{r}
 table(Stroke$stroke)
+ratio_0 = 4861/(4861+249)
+ratio_1 = 1 - ratio_0
+ratio_0
+ratio_1
 ```
-#### We see that 249 people had a stroke and 4861 did not. We have an unbalanced binary outcome. => we must put results in context
+We see that 249 people had a stroke and 4861 did not. We have an unbalanced binary outcome, with 4861/(4861+249) = 95.1272% non-stroke and only 4.8728% of stroke occurrences.
 
 
-## Visualising numerical variables. 
-```{r}
+#### Data Visualization
+```{r, message=FALSE, warning=FALSE}
 # Visualize the data:
 # gender:
 ggplot(data = Stroke, aes(x = gender, fill = stroke)) + geom_bar() + ggtitle("Gender vs Stroke")
@@ -132,55 +146,20 @@ As for the smoking variable, the scaling is again problematic as our outcome var
 XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 
 Summary 
-We see that all "medical terms" (hypertension, heart disease, glucose level, BMI, smoking, age)  most of the time have an impact. It is commonly known that the general health status of a person will have an effect on the likelihood of having a stroke/heart attack and other illnesses. Usually, the weaker a person is the higher the chance of them getting sick. This assumption is pretty much satisfied in our data. 
-
+We see that all "medical terms" (hypertension, heart disease, glucose level, BMI, smoking, age)  most of the time have an impact. It is commonly known that the general health status of a person will have an effect on the likelihood of having a stroke/heart attack and other illnesses. Usually, the weaker a person is the higher the chance of them getting sick. This assumption is pretty much satisfied in our data.
 
 We see in the more "social terms" (gender, age, marriage status, work type, residence type). These variables have an impact on the age of the person (that is how they are directly linked to the medical terms & why they can be significant and should be taken into consideration before being potentially taken out by the model). Marriage status is the most clear example as older people usually have a higher chance of being married, the same goes for work type with the "children/never_worked categories connected to a young age" . It must be estimated and analysed in order to not assume spurious correlations. We need the data to back up any assumptions.
 
-
-#### Boxplot visualisation
-```{r}
-par(mfrow = c(2, 3))
-boxplot(id~hypertension,data = Stroke, main = "Hypertension distribution")
-boxplot(id~heart_disease,data = Stroke,  main = "Heart disease distribution")
-boxplot(id~ever_married,data = Stroke,  main = "Marriage status distribution")
-boxplot(id~work_type,data = Stroke,  main = "Work Type distribution")
-boxplot(id~Residence_type,data = Stroke,  main = "Residence type distribution")
-boxplot(id~smoking_status,data = Stroke,  main = "Smoking status distribution")
-boxplot(id~stroke,data = Stroke,  main = "Stroke distribution")
-```
-#### We see that most variables are evenly distributed, roughly same weights ("50% of the sample have the account and the other 50% have not, for the variables separated into 2 categories"). We see that there is a slight majority of people not accepting the Personal Loan (mean of 0 is higher than the one of 1). I am skeptical of these results as above we saw that less than 10% took the Loan(PL is 1), however in the boxplot it seems like thez are nearlz on the same level.
-
-#### Preparing for analysis : 
+#### Preprocessing the data (preparing for analysis) : 
 
 ````{r}
 # Remove only row with gender = "Other"
 Stroke = Stroke[-3117,]
+# Set 2 levels for gender (and not 3):
+Stroke$gender <- factor(Stroke$gender, levels = c("Female", "Male"))
 ```
 
-
-#### Transforming the categorical variables with more than 2 categories into dummy variables (Here it concerns variables work_type (6) & smoking_status (10))
-
-```{r}
-set.seed(1)
-Stroke2 = Stroke
-# Put work_type as dummy:
-work_type_Dummies <- cbind( Stroke[1:5], dummy(Stroke$work_type, sep = "_"), Stroke[7:11])
-names(work_type_Dummies)[6:10] <- c("children","Govt_job", "Never_Worked", "Private", "Self-employed")
-work_type_Dummies
-Stroke2 <- work_type_Dummies
-```
-
-```{r}
-# Put smoking_status as dummy:
-smoking_status_Dummies <- cbind( Stroke2[1:13], dummy(Stroke2$smoking_status, sep = "_"), Stroke2[15])
-names(smoking_status_Dummies)[14:17] <- c("formerly_smoked", "never_smoked", "smokes", "unknown")
-smoking_status_Dummies
-Stroke2 <- smoking_status_Dummies
-```
-
-
-#### Partitioning the 2 groups (60% in Training, 40% in Valid) & normalizing the data 
+### Partitioning the 2 groups (60% in Training, 40% in Valid) & normalizing the data 
 ```{r}
 set.seed(1)
 Train <- sample(row.names(Stroke), 0.6*dim(Stroke)[1])
@@ -192,21 +171,7 @@ dim(Valid)
 # The data has been correctly partitioned into 60% (3'065 obs) in T and 40% in V (2'044 obs)
 ```
 
-
-#### Initializing training, validation data, using preProcess()
-```{r}
-# initialize normalized training and validation sets:
-Train_norm <- Train
-Valid_norm <- Valid
-Stroke_normalized <- Stroke
-
-# use preProcess() from the caret package to normalize the variables age, average_glucose and bmi:
-Value.norm <- preProcess(Train[, c(2,8,9)], method= "range")
-
-Train_norm[, c(2,8,9)] <- predict(Value.norm, Train[, c(2,8,9)])
-Valid_norm[, c(2,8,9)] <- predict(Value.norm, Valid[, c(2,8,9)])
-Stroke_normalized[, c(2,8,9)] <- predict(Value.norm, Stroke[, c(2,8,9)])
-```
+#### 1) Logistic Regression
 
 ```{r}
 # 1) Logistic Regression
@@ -214,7 +179,8 @@ logit.reg <- glm(stroke ~., data = Train, family = "binomial")
 options(scipen = 999)
 summary(logit.reg)
 ```
-## For variables with NA (self-employed and unknown), they are the defaults dummy values; just like genderFemale is the default dummy of the regression and ever_married_No is the default dummy for ever_married:
+#For variables with NA (self-employed and unknown), they are the defaults dummy values; just like genderFemale is the default dummy of the regression and ever_married_No is the default dummy for ever_married:
+
 - The effect of being male is positive => male have higher propensity of stroke
 - The coefficients effect of the work_type dummies are in comparison to the default value unknown (which is why it has NA).
 - The coefficients effect of the smoking_status dummies are in comparison to the default value self-employed (with NA).
@@ -252,10 +218,10 @@ ggplot(Valid) + geom_point(aes(x=avg_glucose_level,y=as.integer(stroke)-1, color
 - Average glucose: the progression of the slope is slower and way less impactful than age; this is to be expected as the variable avg_glucose_level has lower significance in the model.
 
 ```{r}
-# Confusion matrix
+# Confusion matrix with cut-off 0.5:
 pred.lr = predict(logit.reg, Valid[,-18], type = "response")
-confusionMatrix(as.factor(ifelse(pred.lr > 0.04, 1, 0)), Valid$stroke, positive = "1")
-fourfoldplot(confusionMatrix(as.factor(ifelse(pred.lr > 0.04, 1, 0)), Valid$stroke, positive = "1")$table)
+confusionMatrix(as.factor(ifelse(pred.lr > 0.5, 1, 0)), Valid$stroke, positive = "1")
+fourfoldplot(confusionMatrix(as.factor(ifelse(pred.lr > 0.5, 1, 0)), Valid$stroke, positive = "1")$table)
 ```
 
 This model is not able to predict any stroke; it is not efficient for the goal of our analysis. It is most probable that we have too many unnecessary variables in our model.
@@ -263,8 +229,9 @@ This model is not able to predict any stroke; it is not efficient for the goal o
 The model's goal is to predict stroke. As such, a false positive (saying a patient is likely to get a stroke when they are not) is better than a false negative (saying a patient will not get a stroke when they are actually likely). Thus, sensitivity (rate of true positive) is more important than both specificity (rate of true negative); because detecting a false stroke have less negative consequences than not detecting it (preventive medical monitoring cannot hurt, but not providing them when it could have been useful does).
 
 
-FIND THE CUTOFF THAT MAXIMIZES SENSITIVITY and the overall ACCURACY !!!!!!!!!!
+Find the cutoff that maximizes both sensitivity and overall accuracy:
 ```{r}
+# Find the best cut-off:
 cut_off = seq(0.01,0.99,0.01)
 metrics.df <- data.frame(cut_off, sensitivity = rep(0, length(cut_off)), accuracy = rep(0, length(cut_off)))
 
@@ -282,14 +249,159 @@ cut_off.best = cut_off[which.min(metrics.df$difference)]
 cut_off.best
 ```
 
+The best cut-off is 0.4; which is close to the ratio of stroke/non-stroke in presence in this hospital's dataset: 4.8728%.
 
-##########################################
 ```{r}
-logit.reg <- glm(stroke ~ age + hypertension + avg_glucose_level, data = Train_norm, family = "binomial")
-options(scipen = 999)
-summary(logit.reg)
-
-pred.lr = predict(logit.reg, Valid_norm[,-18], type = "response")
-confusionMatrix(as.factor(ifelse(pred.lr > 0.5, 1, 0)), Valid_norm$stroke, positive = "1")
-fourfoldplot(confusionMatrix(as.factor(ifelse(pred.lr > 0.5, 1, 0)), Valid_norm$stroke, positive = "1")$table)
+# Confusion matrix with best cut-off (0.4):
+confusionMatrix(as.factor(ifelse(pred.lr > 0.04, 1, 0)), Valid$stroke, positive = "1")
+fourfoldplot(confusionMatrix(as.factor(ifelse(pred.lr > 0.04, 1, 0)), Valid$stroke, positive = "1")$table)
 ```
+
+#### 2) KNN
+
+### Normalizing the dataset for KNN and classification tree:
+```{r}
+# initialize normalized training and validation sets:
+Train_norm <- Train
+Valid_norm <- Valid
+Stroke_normalized <- Stroke
+
+# use preProcess() from the caret package to normalize the variables age, average_glucose and bmi:
+Value.norm <- preProcess(Train[, c(2,8,9)], method= "range")
+
+Train_norm[, c(2,8,9)] <- predict(Value.norm, Train[, c(2,8,9)])
+Valid_norm[, c(2,8,9)] <- predict(Value.norm, Valid[, c(2,8,9)])
+Stroke_normalized[, c(2,8,9)] <- predict(Value.norm, Stroke[, c(2,8,9)])
+```
+
+### Transforming the categorical variables with more than 2 categories into dummy variables (Here it concerns variables work_type & smoking_status)
+
+```{r}
+set.seed(1)
+Stroke.norm.dummy = Stroke_normalized
+# Put work_type as dummy:
+work_type_Dummies <- cbind( Stroke.norm.dummy[1:5], dummy(Stroke.norm.dummy$work_type, sep = "_"), Stroke.norm.dummy[7:11])
+names(work_type_Dummies)[6:10] <- c("children","Govt_job", "Never_Worked", "Private", "Self-employed")
+work_type_Dummies
+Stroke.norm.dummy <- work_type_Dummies
+
+# Put smoking_status as dummy:
+smoking_status_Dummies <- cbind( Stroke.norm.dummy[1:13], dummy(Stroke.norm.dummy$smoking_status, sep = "_"), Stroke.norm.dummy[15])
+names(smoking_status_Dummies)[14:17] <- c("formerly_smoked", "never_smoked", "smokes", "unknown")
+smoking_status_Dummies
+Stroke.norm.dummy <- smoking_status_Dummies
+
+# Set training and validation (normalized + dummy) set for KNN:
+set.seed(1)
+Train.norm.dummy <- sample(row.names(Stroke.norm.dummy), 0.6*dim(Stroke.norm.dummy)[1])
+Valid.norm.dummy <- setdiff(row.names(Stroke.norm.dummy), Train.norm.dummy)
+Train.norm.dummy <- Stroke.norm.dummy[Train.norm.dummy, ]
+Valid.norm.dummy <- Stroke.norm.dummy[Valid.norm.dummy, ]
+dim(Train.norm.dummy)
+dim(Valid.norm.dummy)
+
+# KNN tolerates no missing values (here: in bmi): omit them
+Train.norm.dummy <- na.omit(Train.norm.dummy)
+Valid.norm.dummy <- na.omit(Valid.norm.dummy)
+```
+
+```{r}
+# KNN
+knn(Train.norm.dummy[,-18], Valid.norm.dummy[,-18], cl = Train.norm.dummy[,18], k = 3, prob = T)
+
+```
+#### 3) Classification Tree
+
+```{r}
+Stroke.dummy = Stroke
+
+# Put work_type as dummy:
+work_type_Dummies <- cbind(Stroke.dummy[1:5], dummy(Stroke.dummy$work_type, sep = "_"), Stroke.dummy[7:11])
+names(work_type_Dummies)[6:10] <- c("children","Govt_job", "Never_Worked", "Private", "Self-employed")
+work_type_Dummies
+Stroke.dummy <- work_type_Dummies
+
+# Put smoking_status as dummy:
+smoking_status_Dummies <- cbind( Stroke.dummy[1:13], dummy(Stroke.dummy$smoking_status, sep = "_"), Stroke.dummy[15])
+names(smoking_status_Dummies)[14:17] <- c("formerly_smoked", "never_smoked", "smokes", "unknown")
+smoking_status_Dummies
+Stroke.dummy <- smoking_status_Dummies
+
+train.index = sample(NROW(Stroke.dummy), round(NROW(Stroke.dummy)*0.6))
+train.df = Stroke.dummy[train.index,]
+valid.df = Stroke.dummy[- train.index,]
+```
+
+```{r}
+# Full-grown tree:
+set.seed(1)
+c.tree = rpart(stroke ~., data = train.df, method = "class", cp=0, minbucket=1, minsplit = 1, xval =5, parms = list(prior= c(ratio_0, ratio_1)))
+length(c.tree$frame$var[c.tree$frame$var == "<leaf>"])
+c.tree$variable.importance
+prp(c.tree)
+```
+
+```{r}
+# Find the best pruned tree:
+printcp(c.tree)
+
+prune_cp.index = which.min(c.tree$cptable[,"xerror"])
+prune_cp = c.tree$cptable[prune_cp.index,"CP"]
+prune_cp
+
+p <- plotcp(c.tree)
+p + abline(v = prune_cp.index, lty = "dashed")
+```
+
+```{r}
+# Pruned tree:
+set.seed(1)
+pruned.ct <- prune(c.tree, cp = prune_cp, parms = list(prior= c(ratio_0, ratio_1)))
+length(pruned.ct$frame$var[pruned.ct$frame$var == "<leaf>"])
+```
+Again, the model is not able to accurately predict strokes due to a highly unbalanced dataset. We must find the best cp, such that it maximizes both sensitivity and accuracy for the model to be able to predict stroke (according to its goal).
+
+```{r}
+# Find the best cp:
+pred.ct = predict(c.tree, valid.df, type = "class")
+
+row.cp = seq(1,13,1)
+metrics.df2 <- data.frame(row.cp, sensitivity = rep(0, length(row.cp)), accuracy = rep(0, length(row.cp)))
+
+for (i in 1:length(row.cp)){
+  set.seed(1)
+  pruned <- prune(c.tree, cp = c.tree$cptable[,"CP"][row.cp][i])
+  x <- predict(pruned, valid.df, type = "class", parms = list(prior= c(ratio_0, ratio_1)))
+  metrics.df2[i, 2] <- confusionMatrix(x, valid.df$stroke, positive = "1")$byClass[1]
+  metrics.df2[i, 3] <- confusionMatrix(x, valid.df$stroke, positive = "1")$overall[1]
+}
+
+cp.plot = ggplot(data= metrics.df2) + geom_line(aes(x=row.cp,y=sensitivity, color="Sensitivity")) + geom_line(aes(x=row.cp,y=accuracy, color = "Accuracy")) + geom_vline(xintercept = 0.001 , linetype="dashed") + theme_classic() + ggtitle("Sensitivity and Accuracy cp row")
+
+cp.plot
+metrics.df2$difference = sqrt((metrics.df2$accuracy - metrics.df2$sensitivity)^2)
+row.cp.best = row.cp[which.min(metrics.df2$difference)]
+cp.best = c.tree$cptable[,"CP"][row.cp][row.cp.best]
+cp.best
+
+set.seed(1)
+best.pruned <- prune(c.tree, cp = cp.best)
+pred.best.pruned <- predict(best.pruned, valid.df, type = "class", parms = list(prior= c(ratio_0, ratio_1)))
+prp(best.pruned)
+```
+The best pruned tree for predictive stroke is the full classification tree.
+
+```{r}
+# Confusion matrix for CT:
+confusionMatrix(pred.best.pruned, Valid$stroke, positive = "1")
+fourfoldplot(confusionMatrix(pred.best.pruned, Valid$stroke, positive = "1")$table)
+
+```
+
+```{r}
+
+
+```
+
+
+xxx end xxx
