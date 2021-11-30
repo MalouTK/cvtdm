@@ -110,18 +110,32 @@ ggplot(data = Stroke, aes(x = bmi, fill = stroke)) + geom_histogram() + ggtitle(
 ggplot(data = Stroke, aes(x = smoking_status, fill = stroke)) + geom_bar() + ggtitle("Smoking status vs Stroke")
 ```
 
+#### In the histograms, we see that the average age of the patient is in his 40ties and the average glucose and bmi are right-skewed.
+First of all, our data visualisation are our assumptions without having explored or analysed the significance of the explanatory variables. Moreover, the outcome variable stoke is unbalanced so we should be wary of these assumptions. We are visualising them & identifying potential explanations in order to have an idea before  going further. 
 
-```{r, warning = FALSE}
-quantitative_data <- (Stroke[,c(3,9)])
-quantitative_data_melt <- melt(quantitative_data)
-quantitative_data_means <-  quantitative_data_melt %>% group_by(variable) %>% summarise(mean.x = mean(value))
-quantitative_data_median<- quantitative_data_melt %>% group_by(variable) %>% summarise(median.x = median(value))
+We see that the levels of males/females having strokes are about the same. However, this needs to be scaled as we also see that there are more women in the sample than men. It is safe to say that men have a higher chance of having a stroke (yet to be determined the effect/in which significance level). 
 
-quantitative_data_hist <- ggplot(data = quantitative_data_melt, aes(value)) + geom_histogram(fill="transparent",color = "black") + facet_wrap(~variable, scale="free", ncol = 4) + geom_vline(aes(xintercept = mean.x),quantitative_data_means, color = "blue") +  geom_vline(aes(xintercept = median.x),quantitative_data_median, color = "red")  + theme_classic() 
+From the boxplot of Age variable. It is undeniable that the older the person, the higher are their chances of having a stroke (blue boxplot more to the right) and an important difference between both means of both groups. This can be proved also on our histogram. 
 
-quantitative_data_hist
-```
-#### In the histograms, we see that the average age of the patient is in his 40ties and the average glucose is right-skewed.
+Hypertension seems to have an effect, again the scaling is problematic but in relative terms, a lot of patients who suffered a stroke had hypertension. The same for the heart disease but in a way lower importance (blue line in 1 column is less prevalent than in hypertension).
+
+Marriage status, strokes seem to be more common in the people that were/are married. This is due to underlying assumptions, usually married people are older (so maybe it is correlated with age, hypertension, heart disease, that have a higher probability to be the case, denoted by a result of 1, for older people). 
+
+As for the working status, we see that private work type seems to accentuate the likelihood of a strike, however, taking into consideration, the number of observations of that category is way higher so it is logical that stroke probability is also higher. Drop o pas drop ? 
+
+Residence type is pretty evenly distributed and there seems to be a little difference between both categories, therefore, we have decided to drop this variable. 
+
+For the average glucose, We see that a higher level indicates a higher chance of getting a stroke. It is fair to assume that excessive sugar levels are not healthy. This comment is also valid for our dataset.  This same idea is also in the BMI variable, where the difference is not so flagrant but again, medically BMI (even if it is contested) does indicate something about the patient's health status. 
+
+As for the smoking variable, the scaling is again problematic as our outcome variable is unbalanced, we will have to further investigate in order to see the actual impact it has on the likelihood of having a stroke. 
+
+XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+
+Summary 
+We see that all "medical terms" (hypertension, heart disease, glucose level, BMI, smoking, age)  most of the time have an impact. It is commonly known that the general health status of a person will have an effect on the likelihood of having a stroke/heart attack and other illnesses. Usually, the weaker a person is the higher the chance of them getting sick. This assumption is pretty much satisfied in our data. 
+
+
+We see in the more "social terms" (gender, age, marriage status, work type, residence type). These variables have an impact on the age of the person (that is how they are directly linked to the medical terms & why they can be significant and should be taken into consideration before being potentially taken out by the model). Marriage status is the most clear example as older people usually have a higher chance of being married, the same goes for work type with the "children/never_worked categories connected to a young age" . It must be estimated and analysed in order to not assume spurious correlations. We need the data to back up any assumptions.
 
 
 #### Boxplot visualisation
@@ -240,11 +254,34 @@ ggplot(Valid) + geom_point(aes(x=avg_glucose_level,y=as.integer(stroke)-1, color
 ```{r}
 # Confusion matrix
 pred.lr = predict(logit.reg, Valid[,-18], type = "response")
-confusionMatrix(as.factor(ifelse(pred.lr > 0.5, 1, 0)), Valid$stroke, positive = "1")
-fourfoldplot(confusionMatrix(as.factor(ifelse(pred.lr > 0.5, 1, 0)), Valid$stroke, positive = "1")$table)
+confusionMatrix(as.factor(ifelse(pred.lr > 0.04, 1, 0)), Valid$stroke, positive = "1")
+fourfoldplot(confusionMatrix(as.factor(ifelse(pred.lr > 0.04, 1, 0)), Valid$stroke, positive = "1")$table)
 ```
 
-This model is not able to predict any stroke; it is not efficient for the goal of our analysis. It is most probable that we have too many unnecessary variables in our model:
+This model is not able to predict any stroke; it is not efficient for the goal of our analysis. It is most probable that we have too many unnecessary variables in our model.
+
+The model's goal is to predict stroke. As such, a false positive (saying a patient is likely to get a stroke when they are not) is better than a false negative (saying a patient will not get a stroke when they are actually likely). Thus, sensitivity (rate of true positive) is more important than both specificity (rate of true negative); because detecting a false stroke have less negative consequences than not detecting it (preventive medical monitoring cannot hurt, but not providing them when it could have been useful does).
+
+
+FIND THE CUTOFF THAT MAXIMIZES SENSITIVITY and the overall ACCURACY !!!!!!!!!!
+```{r}
+cut_off = seq(0.01,0.99,0.01)
+metrics.df <- data.frame(cut_off, sensitivity = rep(0, length(cut_off)), accuracy = rep(0, length(cut_off)))
+
+for (i in 1:length(cut_off)){
+  x <- as.factor(ifelse(pred.lr >= cut_off[i],1,0))
+  metrics.df[i, 2] <- confusionMatrix(x, Valid$stroke, positive = "1")$byClass[1]
+  metrics.df[i, 3] <- confusionMatrix(x, Valid$stroke, positive = "1")$overall[1]
+}
+
+cutoff.plot = ggplot(data= metrics.df) + geom_line(aes(x=cut_off,y=sensitivity, color="Sensitivity")) + geom_line(aes(x=cut_off,y=accuracy, color = "Accuracy")) + geom_vline(xintercept = 0.044 , linetype="dashed") + theme_classic() + ggtitle("Sensitivity and Accuracy cut-off")
+
+cutoff.plot
+metrics.df$difference = sqrt((metrics.df$accuracy - metrics.df$sensitivity)^2)
+cut_off.best = cut_off[which.min(metrics.df$difference)]
+cut_off.best
+```
+
 
 ##########################################
 ```{r}
