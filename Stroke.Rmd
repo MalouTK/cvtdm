@@ -43,8 +43,11 @@ library(dplyr)
 library(class)
 library(naniar)
 require(ellipse)
+library(cowplot)
 library(rpart)
 library(rpart.plot)
+library(MASS)
+library(DiscriMiner)
 ```
 
  
@@ -310,6 +313,95 @@ Valid.norm.dummy <- na.omit(Valid.norm.dummy)
 knn(Train.norm.dummy[,-18], Valid.norm.dummy[,-18], cl = Train.norm.dummy[,18], k = 3, prob = T)
 
 ```
+
+
+
+
+
+
+
+################################# SECOND VERSION KNN #################
+######################################################################
+
+
+````{r}
+# Dummify:
+Stroke$stroke <- as.integer(ifelse(Stroke$stroke == "0", 0,1))  # change stroke to int for dummification
+Stroke$work_type = as.factor(Stroke$work_type)
+Stroke$smoking_status = as.factor(Stroke$smoking_status)
+dummies = dummyVars(~ ., data=Stroke)
+Stroke.fltr = as.data.frame(predict(dummies, newdata = Stroke)[,-11])
+Stroke.fltr$stroke = as.factor(Stroke.fltr$stroke)  # change stroke back to factor
+str(Stroke.fltr)
+```
+
+```{r}
+prop.table(table(Stroke.fltr$stroke))
+
+set.seed(1)
+
+train.index = createDataPartition(Stroke.fltr$stroke, p = .6, list = FALSE)
+train.set = Stroke.fltr[ train.index,]
+val.set  = Stroke.fltr[-train.index,]
+print(table(train.set$stroke) / table(Stroke.fltr$stroke)) #Training set partition
+print(table(val.set$stroke) / table(Stroke.fltr$stroke)) #Validation set partition
+```
+
+```{r}
+train.norm.df = train.set
+valid.norm.df = val.set
+# Normalization of numerical variables:
+norm.values = preProcess(train.set[, c(4,15,16)], method=c("center", "scale"))
+train.norm.df[, c(4,15,16)] = predict(norm.values, train.set[, c(4,15,16)])
+valid.norm.df[, c(4,15,16)] = predict(norm.values, val.set[, c(4,15,16)])
+
+train.set.num = train.set[, c(4,15,16)] 
+train.set.num.melt = melt(train.set.num)
+
+train.set.num.boxplot = ggplot(train.set.num.melt, aes(y=value, Stroke$stroke)) + 
+  geom_boxplot() + 
+  facet_wrap(~variable, scales = "free", ncol=3) + theme_classic() + xlab("Variables")
+
+#train.set.num.boxplot
+```
+
+```{r}
+### Creating the graph for best K. (column 21/22 = stroke0/stroke1)
+# KNN admits no NA: omit Na in column bmi:
+train.norm.df <- na.omit(train.norm.df)
+valid.norm.df <- na.omit(valid.norm.df)
+
+nk = 10
+metrics.df2 <- data.frame(k = seq(1, nk, 1), accuracy = rep(0, nk), sensitivity = rep(0, nk), F1_score = rep(0, nk))
+
+for(i in 1:nk) {
+  knn.pred = knn(train.norm.df[, -21], valid.norm.df[, -21], cl = train.norm.df[, 21], k = i)
+  metrics.df2[i, 2] = confusionMatrix(knn.pred, valid.norm.df[, 21], positive = "1")$overall[1]
+  metrics.df2[i, 3] = confusionMatrix(knn.pred, valid.norm.df[, 21], positive = "1")$byClass[1]
+}
+
+accuracy.plot = ggplot(data= metrics.df2) + geom_line(aes(x=k,y=accuracy), color="darkred") + theme_classic()
+sensitivity.plot = ggplot(data= metrics.df2) + geom_line(aes(x=k,y=sensitivity), color="blue") + theme_classic()
+both.plot = ggplot(data= metrics.df2) + geom_line(aes(x=k,y=accuracy), color="darkred") + geom_line(aes(x=k,y=sensitivity))+ ylab("Both") + theme_classic()
+
+plot_grid(accuracy.plot, sensitivity.plot, both.plot, ncol = 1, align = "v")
+
+# Compute best trade-off sensitivity-accuracy
+metrics.df2$difference = sqrt((metrics.df2$accuracy - metrics.df2$sensitivity)^2)
+k.best = metrics.df2$k[which.min(metrics.df2$difference)]
+k.best
+```
+The best k is 1, which is logical for such an unbalanced dataset. Indeed, the higher the value of k (= number of reference neighbors), the higher the chance of belonging to the majority group, especially in our case where non-stroke represents 95% of observations. So in case of unbalanced dataset, instead of faulting the results (with a bias due to a lack of diversity), a lower k helps being more precise.
+
+```{r}
+### Creating the confusion Matrix --> need just to change the K = 1 & the 21 corresponds to the stroke variable. 
+
+knn.pred = knn(train.norm.df[, -21], valid.norm.df[, -21], cl = train.norm.df[, 21], k = k.best) 
+## k.best = 1:
+confusionMatrix(knn.pred, valid.norm.df[, 21], positive = "1")
+fourfoldplot(confusionMatrix(knn.pred, valid.norm.df[, 21], positive = "1")$table)
+```
+
 #### 3) Classification Tree
 
 ```{r}
@@ -343,6 +435,7 @@ prp(c.tree)
 
 ```{r}
 # Find the best pruned tree:
+set.seed(1)
 printcp(c.tree)
 
 prune_cp.index = which.min(c.tree$cptable[,"xerror"])
@@ -359,28 +452,29 @@ set.seed(1)
 pruned.ct <- prune(c.tree, cp = prune_cp, parms = list(prior= c(ratio_0, ratio_1)))
 length(pruned.ct$frame$var[pruned.ct$frame$var == "<leaf>"])
 ```
-Again, the model is not able to accurately predict strokes due to a highly unbalanced dataset. We must find the best cp, such that it maximizes both sensitivity and accuracy for the model to be able to predict stroke (according to its goal).
+
+Again, the model is not able to accurately predict strokes due to a highly unbalanced dataset. We must find the best cp, such that it maximizes both sensitivity and accuracy for the model to be able to predict stroke (according to our goal).
 
 ```{r}
 # Find the best cp:
 pred.ct = predict(c.tree, valid.df, type = "class")
 
-row.cp = seq(1,13,1)
-metrics.df2 <- data.frame(row.cp, sensitivity = rep(0, length(row.cp)), accuracy = rep(0, length(row.cp)))
+row.cp = seq(1,20,1)
+metrics.df3 <- data.frame(row.cp, sensitivity = rep(0, length(row.cp)), accuracy = rep(0, length(row.cp)))
 
 for (i in 1:length(row.cp)){
   set.seed(1)
   pruned <- prune(c.tree, cp = c.tree$cptable[,"CP"][row.cp][i])
   x <- predict(pruned, valid.df, type = "class", parms = list(prior= c(ratio_0, ratio_1)))
-  metrics.df2[i, 2] <- confusionMatrix(x, valid.df$stroke, positive = "1")$byClass[1]
-  metrics.df2[i, 3] <- confusionMatrix(x, valid.df$stroke, positive = "1")$overall[1]
+  metrics.df3[i, 2] <- confusionMatrix(x, valid.df$stroke, positive = "1")$byClass[1]
+  metrics.df3[i, 3] <- confusionMatrix(x, valid.df$stroke, positive = "1")$overall[1]
 }
 
-cp.plot = ggplot(data= metrics.df2) + geom_line(aes(x=row.cp,y=sensitivity, color="Sensitivity")) + geom_line(aes(x=row.cp,y=accuracy, color = "Accuracy")) + geom_vline(xintercept = 0.001 , linetype="dashed") + theme_classic() + ggtitle("Sensitivity and Accuracy cp row")
+cp.plot = ggplot(data= metrics.df3) + geom_line(aes(x=row.cp,y=sensitivity, color="Sensitivity")) + geom_line(aes(x=row.cp,y=accuracy, color = "Accuracy")) + geom_vline(xintercept = 0.001 , linetype="dashed") + theme_classic() + ggtitle("Sensitivity and Accuracy cp row")
 
 cp.plot
-metrics.df2$difference = sqrt((metrics.df2$accuracy - metrics.df2$sensitivity)^2)
-row.cp.best = row.cp[which.min(metrics.df2$difference)]
+metrics.df3$difference = sqrt((metrics.df3$accuracy - metrics.df3$sensitivity)^2)
+row.cp.best = row.cp[which.min(metrics.df3$difference)]
 cp.best = c.tree$cptable[,"CP"][row.cp][row.cp.best]
 cp.best
 
@@ -400,6 +494,49 @@ fourfoldplot(confusionMatrix(pred.best.pruned, Valid$stroke, positive = "1")$tab
 
 ```{r}
 
+
+```
+
+## SHOW SENSITIVITY OF 3 METHODS:
+As the results of the full models of the CT and KNN are so low in sensitivity, there are inadequate for this highly unbalanced dataset. Therefore, doing a ensemble method by majority & average would be counterproductive, as the results yield would be lower than the logistic regression.
+
+################################################################################
+
+
+
+4) LDA - Linear Discriminant Analysis
+
+The significant predictors are in order (from most influencer to least) age, hypertension and avg_glucose_level.
+
+```{r}
+# Create a test set - 10% of dataset:
+set.seed(1)
+Test <- sample(row.names(Stroke), 0.1*dim(Stroke)[1])
+Test <- Stroke[Test, ]
+Test <- Test[,c(2,3,11)]
+print(table(Test$stroke) / table(Stroke$stroke))
+
+# Draw a colored scatterplot of Experience vs Training, with ggplot2-
+# - with Training on the Y-axis:
+plot.LDA <- ggplot(data=Test, aes(x=age, y=hypertension)) +
+    geom_point(aes(color=stroke)) + labs(title = " Age vs Hypertension") +
+    theme_bw()
+plot.LDA
+```
+
+The higher the age, the higher the occurrences of strokes (more blue dots on the right).
+In case of hypertension, the likelihood of strokes is also higher (more blue dots top right).
+
+```{r}
+# 1) Compute the LDA model using lda() function
+lda <- lda(formula = stroke ~ age + hypertension, data = Test)
+lda
+```
+
+```{r}
+# 2) Compute LDA with linDA() function:
+linDA <- linDA(Test[,1:2], Test[,3], prior= c(ratio_0, ratio_1))
+linDA
 
 ```
 
