@@ -8,8 +8,6 @@ output: html_document
 
 NOTE:
 
-The 
-
 
 ---
 ```{r setup, include=FALSE}
@@ -69,7 +67,6 @@ Stroke = replace_with_na(Stroke, replace = list(bmi = "N/A")) # bmi has NA now
 Stroke$bmi <- as.numeric(Stroke$bmi)
 Stroke$stroke <- as.factor(Stroke$stroke)
 
-
 # Change character variables as categorical (factor)
 Stroke[,c(2,6:8,11)] <- lapply(Stroke[,c(2,6:8,11)], as.factor)
 
@@ -88,7 +85,7 @@ Using sapply function from TP1 to find out more about the variables. We realise 
 
 To simplify our analysis, we will later disregard the row with that observation, as it not significant enough to be taken into consideration (1/5110 = 0.01956947%) (row/observation number id = 56'156/ row = 3117). We will also disregard the ID column as it only represent the patient id in the hospital and thus has no impact on our outcome variable of interest Stroke.
 
-## Finding out information on our outcome variable
+Finding out information on our outcome variable
 ```{r}
 table(Stroke$stroke)
 ratio_0 = 4861/(4861+249)
@@ -99,24 +96,24 @@ ratio_1
 We see that 249 people had a stroke and 4861 did not. We have an unbalanced binary outcome, with 4861/(4861+249) = 95.1272% non-stroke and only 4.8728% of stroke occurrences.
 
 
-#### Data Visualization
-```{r, message=FALSE, warning=FALSE}
+# Data Visualization
+```{r message=FALSE, warning=FALSE}
 # Visualize the data:
 # gender:
-ggplot(data = Stroke, aes(x = gender, fill = stroke)) + geom_bar() + ggtitle("Gender vs Stroke")
+ggplot(data = Stroke, aes(x = gender, fill = stroke)) + geom_bar(position="dodge") + ggtitle("Gender vs Stroke") + geom_text(aes(label = ..count..), stat = "count", colour = "grey38", size = 3, vjust = -0.3, position = position_dodge(.9))
 # age:
 ggplot(data = Stroke, aes(x = age, fill = stroke)) + geom_boxplot() + ggtitle("Age vs Stroke")
 ggplot(data = Stroke, aes(x = age, fill = stroke)) + geom_histogram() + ggtitle("Age vs Stroke")
 # hypertension:
-ggplot(data = Stroke, aes(x = hypertension, fill = stroke)) + geom_bar() + ggtitle("Hypertension vs Stroke")
+ggplot(data = Stroke, aes(x = hypertension, fill = stroke)) + geom_bar(position="dodge") + ggtitle("Hypertension vs Stroke") + geom_text(aes(label = ..count..), stat = "count", colour = "grey38", size = 3, vjust = -0.3, position = position_dodge(.9))
 # heart disease:
-ggplot(data = Stroke, aes(x = heart_disease, fill = stroke)) + geom_bar() + ggtitle("Heart disease vs Stroke")
+ggplot(data = Stroke, aes(x = heart_disease, fill = stroke)) + geom_bar(position="dodge") + ggtitle("Heart disease vs Stroke") + geom_text(aes(label = ..count..), stat = "count", colour = "grey38", size = 3, vjust = -0.3, position = position_dodge(.9))
 # ever married:
-ggplot(data = Stroke, aes(x = ever_married, fill = stroke)) + geom_bar() + ggtitle("Ever married vs Stroke")
+ggplot(data = Stroke, aes(x = ever_married, fill = stroke)) + geom_bar(position="dodge") + ggtitle("Ever married vs Stroke") + geom_text(aes(label = ..count..), stat = "count", colour = "grey38", size = 3, vjust = -0.3, position = position_dodge(.9))
 # work type:
-ggplot(data = Stroke, aes(x = work_type, fill = stroke)) + geom_bar() + ggtitle("Work type vs Stroke")
+ggplot(data = Stroke, aes(x = work_type, fill = stroke)) + geom_bar(position="dodge") + ggtitle("Work type vs Stroke") + geom_text(aes(label = ..count..), stat = "count", colour = "grey38", size = 3, vjust = -0.3, position = position_dodge(.9))
 # Residence type:
-ggplot(data = Stroke, aes(x = Residence_type, fill = stroke)) + geom_bar() + ggtitle("Residence type vs Stroke")
+ggplot(data = Stroke, aes(x = Residence_type, fill = stroke)) + geom_bar(position="dodge") + ggtitle("Residence type vs Stroke") + geom_text(aes(label = ..count..), stat = "count", colour = "grey38", size = 3, vjust = -0.3, position = position_dodge(.9))
 # Average glucose level:
 ggplot(data = Stroke, aes(x = avg_glucose_level, fill = stroke)) + geom_boxplot() + ggtitle("Average glucose level vs Stroke")
 ggplot(data = Stroke, aes(x = avg_glucose_level, fill = stroke)) + geom_histogram() + ggtitle("Average glucose level vs Stroke")
@@ -124,10 +121,10 @@ ggplot(data = Stroke, aes(x = avg_glucose_level, fill = stroke)) + geom_histogra
 ggplot(data = Stroke, aes(x = bmi, fill = stroke)) + geom_boxplot() + ggtitle("BMI vs Stroke")
 ggplot(data = Stroke, aes(x = bmi, fill = stroke)) + geom_histogram() + ggtitle("BMI vs Stroke")
 # Smoking status:
-ggplot(data = Stroke, aes(x = smoking_status, fill = stroke)) + geom_bar() + ggtitle("Smoking status vs Stroke")
+ggplot(data = Stroke, aes(x = smoking_status, fill = stroke)) + geom_bar(position="dodge") + ggtitle("Smoking status vs Stroke") + geom_text(aes(label = ..count..), stat = "count", colour = "grey38", size = 3, vjust = -0.3, position = position_dodge(.9))
 ```
+In the histograms, we see that the average age of the patient is in his 40ties and the average glucose and bmi are right-skewed.
 
-#### In the histograms, we see that the average age of the patient is in his 40ties and the average glucose and bmi are right-skewed.
 First of all, our data visualisation are our assumptions without having explored or analysed the significance of the explanatory variables. Moreover, the outcome variable stoke is unbalanced so we should be wary of these assumptions. We are visualising them & identifying potential explanations in order to have an idea before  going further. 
 
 We see that the levels of males/females having strokes are about the same. However, this needs to be scaled as we also see that there are more women in the sample than men. It is safe to say that men have a higher chance of having a stroke (yet to be determined the effect/in which significance level). 
@@ -153,7 +150,7 @@ We see that all "medical terms" (hypertension, heart disease, glucose level, BMI
 
 We see in the more "social terms" (gender, age, marriage status, work type, residence type). These variables have an impact on the age of the person (that is how they are directly linked to the medical terms & why they can be significant and should be taken into consideration before being potentially taken out by the model). Marriage status is the most clear example as older people usually have a higher chance of being married, the same goes for work type with the "children/never_worked categories connected to a young age" . It must be estimated and analysed in order to not assume spurious correlations. We need the data to back up any assumptions.
 
-#### Preprocessing the data (preparing for analysis) : 
+# Preparing the data for analysis : 
 
 ````{r}
 # Remove only row with gender = "Other"
@@ -162,27 +159,30 @@ Stroke = Stroke[-3117,]
 Stroke$gender <- factor(Stroke$gender, levels = c("Female", "Male"))
 ```
 
-### Partitioning the 2 groups (60% in Training, 40% in Valid) & normalizing the data 
+#### 1) Logistic Regression
+
+# Partition for LR: 
+
+We split 60%-Training, 40%-Validation and normalize the data 
 ```{r}
 set.seed(1)
-Train <- sample(row.names(Stroke), 0.6*dim(Stroke)[1])
-Valid <- setdiff(row.names(Stroke), Train)
-Train <- Stroke[Train, ]
-Valid <- Stroke[Valid, ]
-dim(Train)
-dim(Valid)
+train.lr <- sample(row.names(Stroke), 0.6*dim(Stroke)[1])
+valid.lr <- setdiff(row.names(Stroke), train.lr)
+train.lr <- Stroke[train.lr, ]
+valid.lr <- Stroke[valid.lr, ]
+dim(train.lr)
+dim(valid.lr)
 # The data has been correctly partitioned into 60% (3'065 obs) in T and 40% in V (2'044 obs)
 ```
-
-#### 1) Logistic Regression
+# Doing LR
 
 ```{r}
 # 1) Logistic Regression
-logit.reg <- glm(stroke ~., data = Train, family = "binomial")
+logit.reg <- glm(stroke ~., data = train.lr, family = "binomial")
 options(scipen = 999)
 summary(logit.reg)
 ```
-#For variables with NA (self-employed and unknown), they are the defaults dummy values; just like genderFemale is the default dummy of the regression and ever_married_No is the default dummy for ever_married:
+For variables with NA (self-employed and unknown), they are the defaults dummy values; just like genderFemale is the default dummy of the regression and ever_married_No is the default dummy for ever_married:
 
 - The effect of being male is positive => male have higher propensity of stroke
 - The coefficients effect of the work_type dummies are in comparison to the default value unknown (which is why it has NA).
@@ -193,28 +193,28 @@ The significant predictors are in order (from most influencer to least) age, hyp
 ```{r}
 # Graphs for the significant variables
 # For age:
-mod <- glm(stroke ~ age, data = Train, binomial("logit"))
+mod <- glm(stroke ~ age, data = train.lr, binomial("logit"))
 coefs <- coef(mod)
-x_plot <- with(Train, seq(min(age), max(age)+25, length.out = 200))
+x_plot <- with(train.lr, seq(min(age), max(age)+25, length.out = 200))
 y_plot <- plogis(coefs[1] + coefs[2] * x_plot)
 
-ggplot(Valid) + geom_point(aes(x=age,y=as.integer(stroke)-1, color=stroke)) + geom_line(aes(x= x_plot, y=y_plot), col = "black", data = data.frame(x_plot,y_plot)) + xlab("Age") + ylab("Stroke") + scale_x_continuous(breaks = seq(0,250,50)) + theme_classic()
+ggplot(valid.lr) + geom_point(aes(x=age,y=as.integer(stroke)-1, color=stroke)) + geom_line(aes(x= x_plot, y=y_plot), col = "black", data = data.frame(x_plot,y_plot)) + xlab("Age") + ylab("Stroke") + scale_x_continuous(breaks = seq(0,250,50)) + theme_classic()
 
 # For hypertension:
-mod2 <- glm(stroke ~ hypertension, data = Train, binomial("logit"))
+mod2 <- glm(stroke ~ hypertension, data = train.lr, binomial("logit"))
 coefs2 <- coef(mod2)
-x_plot2 <- with(Train, seq(min(hypertension), max(hypertension), length.out = 200))
+x_plot2 <- with(train.lr, seq(min(hypertension), max(hypertension), length.out = 200))
 y_plot2 <- plogis(coefs2[1] + coefs2[2] * x_plot2)
 
-ggplot(Valid) + geom_point(aes(x=hypertension,y=as.integer(stroke)-1, color=stroke)) + geom_line(aes(x= x_plot2, y=y_plot2), col = "black", data = data.frame(x_plot2,y_plot2)) + xlab("Hypertension") + ylab("Stroke") + scale_x_continuous(breaks = seq(0,250,50)) + theme_classic()
+ggplot(valid.lr) + geom_point(aes(x=hypertension,y=as.integer(stroke)-1, color=stroke)) + geom_line(aes(x= x_plot2, y=y_plot2), col = "black", data = data.frame(x_plot2,y_plot2)) + xlab("Hypertension") + ylab("Stroke") + scale_x_continuous(breaks = seq(0,250,50)) + theme_classic()
 
 # For average glucose level:
-mod3 <- glm(stroke ~ avg_glucose_level, data = Train, binomial("logit"))
+mod3 <- glm(stroke ~ avg_glucose_level, data = train.lr, binomial("logit"))
 coefs3 <- coef(mod3)
-x_plot3 <- with(Train, seq(min(avg_glucose_level), max(avg_glucose_level)+25, length.out = 200))
+x_plot3 <- with(train.lr, seq(min(avg_glucose_level), max(avg_glucose_level)+25, length.out = 200))
 y_plot3 <- plogis(coefs3[1] + coefs3[2] * x_plot3)
 
-ggplot(Valid) + geom_point(aes(x=avg_glucose_level,y=as.integer(stroke)-1, color=stroke)) + geom_line(aes(x= x_plot3, y=y_plot3), col = "black", data = data.frame(x_plot3,y_plot3)) + xlab("Average glucose") + ylab("Stroke") + scale_x_continuous(breaks = seq(0,250,50)) + theme_classic()
+ggplot(valid.lr) + geom_point(aes(x=avg_glucose_level,y=as.integer(stroke)-1, color=stroke)) + geom_line(aes(x= x_plot3, y=y_plot3), col = "black", data = data.frame(x_plot3,y_plot3)) + xlab("Average glucose") + ylab("Stroke") + scale_x_continuous(breaks = seq(0,250,50)) + theme_classic()
 ```
 
 - Age: The older you get, the more probable it is you get a stroke. The first instances of stroke arises around 30 year of age according to the graph; and it start rising the older you get.
@@ -222,9 +222,9 @@ ggplot(Valid) + geom_point(aes(x=avg_glucose_level,y=as.integer(stroke)-1, color
 
 ```{r}
 # Confusion matrix with cut-off 0.5:
-pred.lr = predict(logit.reg, Valid[,-18], type = "response")
-confusionMatrix(as.factor(ifelse(pred.lr > 0.5, 1, 0)), Valid$stroke, positive = "1")
-fourfoldplot(confusionMatrix(as.factor(ifelse(pred.lr > 0.5, 1, 0)), Valid$stroke, positive = "1")$table)
+pred.lr = predict(logit.reg, valid.lr[,-18], type = "response")
+confusionMatrix(as.factor(ifelse(pred.lr > 0.5, 1, 0)), valid.lr$stroke, positive = "1")
+fourfoldplot(confusionMatrix(as.factor(ifelse(pred.lr > 0.5, 1, 0)), valid.lr$stroke, positive = "1")$table)
 ```
 
 This model is not able to predict any stroke; it is not efficient for the goal of our analysis. It is most probable that we have too many unnecessary variables in our model.
@@ -233,22 +233,22 @@ The model's goal is to predict stroke. As such, a false positive (saying a patie
 
 
 Find the cutoff that maximizes both sensitivity and overall accuracy:
-```{r}
+```{r, warning=FALSE, message=FALSE}
 # Find the best cut-off:
 cut_off = seq(0.01,0.99,0.01)
-metrics.df <- data.frame(cut_off, sensitivity = rep(0, length(cut_off)), accuracy = rep(0, length(cut_off)))
+metrics.lr <- data.frame(cut_off, sensitivity = rep(0, length(cut_off)), accuracy = rep(0, length(cut_off)))
 
 for (i in 1:length(cut_off)){
   x <- as.factor(ifelse(pred.lr >= cut_off[i],1,0))
-  metrics.df[i, 2] <- confusionMatrix(x, Valid$stroke, positive = "1")$byClass[1]
-  metrics.df[i, 3] <- confusionMatrix(x, Valid$stroke, positive = "1")$overall[1]
+  metrics.lr[i, 2] <- confusionMatrix(x, valid.lr$stroke, positive = "1")$byClass[1]
+  metrics.lr[i, 3] <- confusionMatrix(x, valid.lr$stroke, positive = "1")$overall[1]
 }
 
-cutoff.plot = ggplot(data= metrics.df) + geom_line(aes(x=cut_off,y=sensitivity, color="Sensitivity")) + geom_line(aes(x=cut_off,y=accuracy, color = "Accuracy")) + geom_vline(xintercept = 0.044 , linetype="dashed") + theme_classic() + ggtitle("Sensitivity and Accuracy cut-off")
+cutoff.plot = ggplot(data= metrics.lr) + geom_line(aes(x=cut_off,y=sensitivity, color="Sensitivity")) + geom_line(aes(x=cut_off,y=accuracy, color = "Accuracy")) + geom_vline(xintercept = 0.044 , linetype="dashed") + theme_classic() + ggtitle("Sensitivity and Accuracy cut-off")
 
 cutoff.plot
-metrics.df$difference = sqrt((metrics.df$accuracy - metrics.df$sensitivity)^2)
-cut_off.best = cut_off[which.min(metrics.df$difference)]
+metrics.lr$difference = sqrt((metrics.lr$accuracy - metrics.lr$sensitivity)^2)
+cut_off.best = cut_off[which.min(metrics.lr$difference)]
 cut_off.best
 ```
 
@@ -256,178 +256,42 @@ The best cut-off is 0.4; which is close to the ratio of stroke/non-stroke in pre
 
 ```{r}
 # Confusion matrix with best cut-off (0.4):
-confusionMatrix(as.factor(ifelse(pred.lr > 0.04, 1, 0)), Valid$stroke, positive = "1")
-fourfoldplot(confusionMatrix(as.factor(ifelse(pred.lr > 0.04, 1, 0)), Valid$stroke, positive = "1")$table)
+conf.lr = confusionMatrix(as.factor(ifelse(pred.lr > 0.04, 1, 0)), valid.lr$stroke, positive = "1")
+conf.lr
+fourfoldplot(confusionMatrix(as.factor(ifelse(pred.lr > 0.04, 1, 0)), valid.lr$stroke, positive = "1")$table)
 ```
+#### 2) Classification Tree
 
-#### 2) KNN
+# Partition for Classification Tree 
 
-### Normalizing the dataset for KNN and classification tree:
-```{r}
-# initialize normalized training and validation sets:
-Train_norm <- Train
-Valid_norm <- Valid
-Stroke_normalized <- Stroke
-
-# use preProcess() from the caret package to normalize the variables age, average_glucose and bmi:
-Value.norm <- preProcess(Train[, c(2,8,9)], method= "range")
-
-Train_norm[, c(2,8,9)] <- predict(Value.norm, Train[, c(2,8,9)])
-Valid_norm[, c(2,8,9)] <- predict(Value.norm, Valid[, c(2,8,9)])
-Stroke_normalized[, c(2,8,9)] <- predict(Value.norm, Stroke[, c(2,8,9)])
-```
-
-### Transforming the categorical variables with more than 2 categories into dummy variables (Here it concerns variables work_type & smoking_status)
-
-```{r}
+We partition into 60/40 and put categorical variables with more than 2 levels as dummies:
+```{r, warning=FALSE, message=FALSE}
 set.seed(1)
-Stroke.norm.dummy = Stroke_normalized
-# Put work_type as dummy:
-work_type_Dummies <- cbind( Stroke.norm.dummy[1:5], dummy(Stroke.norm.dummy$work_type, sep = "_"), Stroke.norm.dummy[7:11])
-names(work_type_Dummies)[6:10] <- c("children","Govt_job", "Never_Worked", "Private", "Self-employed")
-work_type_Dummies
-Stroke.norm.dummy <- work_type_Dummies
-
-# Put smoking_status as dummy:
-smoking_status_Dummies <- cbind( Stroke.norm.dummy[1:13], dummy(Stroke.norm.dummy$smoking_status, sep = "_"), Stroke.norm.dummy[15])
-names(smoking_status_Dummies)[14:17] <- c("formerly_smoked", "never_smoked", "smokes", "unknown")
-smoking_status_Dummies
-Stroke.norm.dummy <- smoking_status_Dummies
-
-# Set training and validation (normalized + dummy) set for KNN:
-set.seed(1)
-Train.norm.dummy <- sample(row.names(Stroke.norm.dummy), 0.6*dim(Stroke.norm.dummy)[1])
-Valid.norm.dummy <- setdiff(row.names(Stroke.norm.dummy), Train.norm.dummy)
-Train.norm.dummy <- Stroke.norm.dummy[Train.norm.dummy, ]
-Valid.norm.dummy <- Stroke.norm.dummy[Valid.norm.dummy, ]
-dim(Train.norm.dummy)
-dim(Valid.norm.dummy)
-
-# KNN tolerates no missing values (here: in bmi): omit them
-Train.norm.dummy <- na.omit(Train.norm.dummy)
-Valid.norm.dummy <- na.omit(Valid.norm.dummy)
-```
-
-```{r}
-# KNN
-knn(Train.norm.dummy[,-18], Valid.norm.dummy[,-18], cl = Train.norm.dummy[,18], k = 3, prob = T)
-
-```
-
-
-
-
-
-
-
-################################# SECOND VERSION KNN #################
-######################################################################
-
-
-````{r}
-# Dummify:
-Stroke$stroke <- as.integer(ifelse(Stroke$stroke == "0", 0,1))  # change stroke to int for dummification
-Stroke$work_type = as.factor(Stroke$work_type)
-Stroke$smoking_status = as.factor(Stroke$smoking_status)
-dummies = dummyVars(~ ., data=Stroke)
-Stroke.fltr = as.data.frame(predict(dummies, newdata = Stroke)[,-11])
-Stroke.fltr$stroke = as.factor(Stroke.fltr$stroke)  # change stroke back to factor
-str(Stroke.fltr)
-```
-
-```{r}
-prop.table(table(Stroke.fltr$stroke))
-
-set.seed(1)
-
-train.index = createDataPartition(Stroke.fltr$stroke, p = .6, list = FALSE)
-train.set = Stroke.fltr[ train.index,]
-val.set  = Stroke.fltr[-train.index,]
-print(table(train.set$stroke) / table(Stroke.fltr$stroke)) #Training set partition
-print(table(val.set$stroke) / table(Stroke.fltr$stroke)) #Validation set partition
-```
-
-```{r}
-train.norm.df = train.set
-valid.norm.df = val.set
-# Normalization of numerical variables:
-norm.values = preProcess(train.set[, c(4,15,16)], method=c("center", "scale"))
-train.norm.df[, c(4,15,16)] = predict(norm.values, train.set[, c(4,15,16)])
-valid.norm.df[, c(4,15,16)] = predict(norm.values, val.set[, c(4,15,16)])
-
-train.set.num = train.set[, c(4,15,16)] 
-train.set.num.melt = melt(train.set.num)
-
-train.set.num.boxplot = ggplot(train.set.num.melt, aes(y=value, Stroke$stroke)) + 
-  geom_boxplot() + 
-  facet_wrap(~variable, scales = "free", ncol=3) + theme_classic() + xlab("Variables")
-
-#train.set.num.boxplot
-```
-
-```{r}
-### Creating the graph for best K. (column 21/22 = stroke0/stroke1)
-# KNN admits no NA: omit Na in column bmi:
-train.norm.df <- na.omit(train.norm.df)
-valid.norm.df <- na.omit(valid.norm.df)
-
-nk = 10
-metrics.df2 <- data.frame(k = seq(1, nk, 1), accuracy = rep(0, nk), sensitivity = rep(0, nk), F1_score = rep(0, nk))
-
-for(i in 1:nk) {
-  knn.pred = knn(train.norm.df[, -21], valid.norm.df[, -21], cl = train.norm.df[, 21], k = i)
-  metrics.df2[i, 2] = confusionMatrix(knn.pred, valid.norm.df[, 21], positive = "1")$overall[1]
-  metrics.df2[i, 3] = confusionMatrix(knn.pred, valid.norm.df[, 21], positive = "1")$byClass[1]
-}
-
-accuracy.plot = ggplot(data= metrics.df2) + geom_line(aes(x=k,y=accuracy), color="darkred") + theme_classic()
-sensitivity.plot = ggplot(data= metrics.df2) + geom_line(aes(x=k,y=sensitivity), color="blue") + theme_classic()
-both.plot = ggplot(data= metrics.df2) + geom_line(aes(x=k,y=accuracy), color="darkred") + geom_line(aes(x=k,y=sensitivity))+ ylab("Both") + theme_classic()
-
-plot_grid(accuracy.plot, sensitivity.plot, both.plot, ncol = 1, align = "v")
-
-# Compute best trade-off sensitivity-accuracy
-metrics.df2$difference = sqrt((metrics.df2$accuracy - metrics.df2$sensitivity)^2)
-k.best = metrics.df2$k[which.min(metrics.df2$difference)]
-k.best
-```
-The best k is 1, which is logical for such an unbalanced dataset. Indeed, the higher the value of k (= number of reference neighbors), the higher the chance of belonging to the majority group, especially in our case where non-stroke represents 95% of observations. So in case of unbalanced dataset, instead of faulting the results (with a bias due to a lack of diversity), a lower k helps being more precise.
-
-```{r}
-### Creating the confusion Matrix --> need just to change the K = 1 & the 21 corresponds to the stroke variable. 
-
-knn.pred = knn(train.norm.df[, -21], valid.norm.df[, -21], cl = train.norm.df[, 21], k = k.best) 
-## k.best = 1:
-confusionMatrix(knn.pred, valid.norm.df[, 21], positive = "1")
-fourfoldplot(confusionMatrix(knn.pred, valid.norm.df[, 21], positive = "1")$table)
-```
-
-#### 3) Classification Tree
-
-```{r}
 Stroke.dummy = Stroke
 
 # Put work_type as dummy:
 work_type_Dummies <- cbind(Stroke.dummy[1:5], dummy(Stroke.dummy$work_type, sep = "_"), Stroke.dummy[7:11])
 names(work_type_Dummies)[6:10] <- c("children","Govt_job", "Never_Worked", "Private", "Self-employed")
-work_type_Dummies
+#work_type_Dummies
 Stroke.dummy <- work_type_Dummies
 
 # Put smoking_status as dummy:
 smoking_status_Dummies <- cbind( Stroke.dummy[1:13], dummy(Stroke.dummy$smoking_status, sep = "_"), Stroke.dummy[15])
 names(smoking_status_Dummies)[14:17] <- c("formerly_smoked", "never_smoked", "smokes", "unknown")
-smoking_status_Dummies
+#smoking_status_Dummies
 Stroke.dummy <- smoking_status_Dummies
 
-train.index = sample(NROW(Stroke.dummy), round(NROW(Stroke.dummy)*0.6))
-train.df = Stroke.dummy[train.index,]
-valid.df = Stroke.dummy[- train.index,]
+train.index.ct = sample(NROW(Stroke.dummy), round(NROW(Stroke.dummy)*0.6))
+train.ct = Stroke.dummy[train.index.ct,]
+valid.ct = Stroke.dummy[- train.index.ct,]
 ```
+
+# Doing CT
 
 ```{r}
 # Full-grown tree:
 set.seed(1)
-c.tree = rpart(stroke ~., data = train.df, method = "class", cp=0, minbucket=1, minsplit = 1, xval =5, parms = list(prior= c(ratio_0, ratio_1)))
+c.tree = rpart(stroke ~., data = train.ct, method = "class", cp=0, minbucket=1, minsplit = 1, xval =5, parms = list(prior= c(ratio_0, ratio_1)))
 length(c.tree$frame$var[c.tree$frame$var == "<leaf>"])
 c.tree$variable.importance
 prp(c.tree)
@@ -457,47 +321,139 @@ Again, the model is not able to accurately predict strokes due to a highly unbal
 
 ```{r}
 # Find the best cp:
-pred.ct = predict(c.tree, valid.df, type = "class")
+pred.ct = predict(c.tree, valid.ct, type = "class")
 
-row.cp = seq(1,20,1)
-metrics.df3 <- data.frame(row.cp, sensitivity = rep(0, length(row.cp)), accuracy = rep(0, length(row.cp)))
+row.cp = seq(1,nrow(c.tree$cptable),1)
+metrics.ct <- data.frame(row.cp, sensitivity = rep(0, length(row.cp)), accuracy = rep(0, length(row.cp)))
 
 for (i in 1:length(row.cp)){
   set.seed(1)
   pruned <- prune(c.tree, cp = c.tree$cptable[,"CP"][row.cp][i])
-  x <- predict(pruned, valid.df, type = "class", parms = list(prior= c(ratio_0, ratio_1)))
-  metrics.df3[i, 2] <- confusionMatrix(x, valid.df$stroke, positive = "1")$byClass[1]
-  metrics.df3[i, 3] <- confusionMatrix(x, valid.df$stroke, positive = "1")$overall[1]
+  x <- predict(pruned, valid.ct, type = "class", parms = list(prior= c(ratio_0, ratio_1)))
+  metrics.ct[i, 2] <- confusionMatrix(x, valid.ct$stroke, positive = "1")$byClass[1]
+  metrics.ct[i, 3] <- confusionMatrix(x, valid.ct$stroke, positive = "1")$overall[1]
 }
 
-cp.plot = ggplot(data= metrics.df3) + geom_line(aes(x=row.cp,y=sensitivity, color="Sensitivity")) + geom_line(aes(x=row.cp,y=accuracy, color = "Accuracy")) + geom_vline(xintercept = 0.001 , linetype="dashed") + theme_classic() + ggtitle("Sensitivity and Accuracy cp row")
+cp.plot = ggplot(data= metrics.ct) + geom_line(aes(x=row.cp,y=sensitivity, color="Sensitivity")) + geom_line(aes(x=row.cp,y=accuracy, color = "Accuracy")) + geom_vline(xintercept = 0.001 , linetype="dashed") + theme_classic() + ggtitle("Sensitivity and Accuracy cp row")
 
 cp.plot
-metrics.df3$difference = sqrt((metrics.df3$accuracy - metrics.df3$sensitivity)^2)
-row.cp.best = row.cp[which.min(metrics.df3$difference)]
+metrics.ct$difference = sqrt((metrics.ct$accuracy - metrics.ct$sensitivity)^2)
+row.cp.best = row.cp[which.min(metrics.ct$difference)]
 cp.best = c.tree$cptable[,"CP"][row.cp][row.cp.best]
 cp.best
 
 set.seed(1)
 best.pruned <- prune(c.tree, cp = cp.best)
-pred.best.pruned <- predict(best.pruned, valid.df, type = "class", parms = list(prior= c(ratio_0, ratio_1)))
+pred.best.pruned <- predict(best.pruned, valid.ct, type = "class", parms = list(prior= c(ratio_0, ratio_1)))
 prp(best.pruned)
 ```
 The best pruned tree for predictive stroke is the full classification tree.
 
 ```{r}
 # Confusion matrix for CT:
-confusionMatrix(pred.best.pruned, Valid$stroke, positive = "1")
-fourfoldplot(confusionMatrix(pred.best.pruned, Valid$stroke, positive = "1")$table)
+conf.ct = confusionMatrix(pred.best.pruned, valid.ct$stroke, positive = "1")
+conf.ct
+fourfoldplot(confusionMatrix(pred.best.pruned, valid.ct$stroke, positive = "1")$table)
 
+# Prediction on the training set itself:
+confusionMatrix(predict(best.pruned, train.ct, type = "class", parms = list(prior= c(ratio_0, ratio_1))), train.ct$stroke, positive = "1")
+```
+
+#### 3) KNN
+
+# Partition for KNN
+
+We partition into 60/40, create dummy variables, change all predictors to numerical and normalize them:
+````{r}
+# Dummify:
+Stroke$stroke <- as.integer(ifelse(Stroke$stroke == "0", 0,1))  # change stroke to int during dummification
+dummies = dummyVars(~ ., data=Stroke)
+Stroke.fltr = as.data.frame(predict(dummies, newdata = Stroke)[,-11])
+Stroke.fltr$stroke = as.factor(Stroke.fltr$stroke)  # change stroke back to factor
+str(Stroke.fltr)
 ```
 
 ```{r}
+prop.table(table(Stroke.fltr$stroke))
 
-
+set.seed(1)
+train.index.knn = sample(NROW(Stroke.fltr), round(NROW(Stroke.fltr)*0.6))
+train.knn = Stroke.fltr[ train.index.knn,]
+valid.knn  = Stroke.fltr[-train.index.knn,]
+print(table(train.knn$stroke) / table(Stroke.fltr$stroke)) #Training set partition
+print(table(valid.knn$stroke) / table(Stroke.fltr$stroke)) #Validation set partition
 ```
 
-## SHOW SENSITIVITY OF 3 METHODS:
+```{r, warning=FALSE, message=FALSE}
+# Normalize the dummified sets:
+train.norm.knn = train.knn
+valid.norm.knn = valid.knn
+# Normalization of numerical variables:
+norm.values = preProcess(train.knn[, c(3,14,15)], method=c("range"))
+train.norm.knn[, c(3,14,15)] = predict(norm.values, train.knn[, c(3,14,15)])
+valid.norm.knn[, c(3,14,15)] = predict(norm.values, valid.knn[, c(3,14,15)])
+```
+
+# Doing KNN
+
+```{r}
+### Creating the graph for best K. (column 21/22 = stroke0/stroke1)
+# KNN admits no NA: omit Na in column bmi:
+train.norm.knn <- na.exclude(train.norm.knn)
+valid.norm.knn <- na.exclude(valid.norm.knn)
+
+set.seed(1)
+nk = 10
+metrics.knn <- data.frame(k = seq(1, nk, 1), accuracy = rep(0, nk), sensitivity = rep(0, nk), F1_score = rep(0, nk))
+
+for(i in 1:nk) {
+  knn.pred = knn(train.norm.knn[, -20], valid.norm.knn[, -20], cl = train.norm.knn[, 20], k = i)
+  metrics.knn[i, 2] = confusionMatrix(knn.pred, valid.norm.knn[, 20], positive = "1")$overall[1]
+  metrics.knn[i, 3] = confusionMatrix(knn.pred, valid.norm.knn[, 20], positive = "1")$byClass[1]
+}
+
+accuracy.plot = ggplot(data= metrics.knn) + geom_line(aes(x=k,y=accuracy), color="darkred") + theme_classic()
+sensitivity.plot = ggplot(data= metrics.knn) + geom_line(aes(x=k,y=sensitivity), color="blue") + theme_classic()
+both.plot = ggplot(data= metrics.knn) + geom_line(aes(x=k,y=accuracy), color="darkred") + geom_line(aes(x=k,y=sensitivity))+ ylab("Both") + theme_classic()
+
+plot_grid(accuracy.plot, sensitivity.plot, both.plot, ncol = 1, align = "v")
+
+# Compute best trade-off sensitivity-accuracy
+metrics.knn$difference = sqrt((metrics.knn$accuracy - metrics.knn$sensitivity)^2)
+k.best = metrics.knn$k[which.min(metrics.knn$difference)]
+k.best
+```
+The best k is 1, which is logical for such an unbalanced dataset. Indeed, the higher the value of k (= number of reference neighbors), the higher the chance of belonging to the majority group, especially in our case where non-stroke represents 95% of observations. So in case of unbalanced dataset, instead of faulting the results (with a bias due to a lack of diversity), a lower k helps being more precise.
+
+```{r}
+### Creating the confusion Matrix --> need just to change the K = 1 & the 21 corresponds to the stroke variable. 
+
+pred.knn = knn(train.norm.knn[, -20], valid.norm.knn[, -20], cl = train.norm.knn[, 20], k = k.best) 
+## k.best = 1:
+conf.knn = confusionMatrix(pred.knn, valid.norm.knn[, 20], positive = "1")
+conf.knn
+fourfoldplot(confusionMatrix(pred.knn, valid.norm.knn[, 20], positive = "1")$table)
+```
+
+## 4) Ensemble methods
+
+```{r}
+pred.ct.prob = predict(best.pruned, valid.ct, type = "prob", parms = list(prior= c(ratio_0, ratio_1)))
+
+pred.knn.prob = knn(train.norm.knn[, -20], valid.norm.knn[, -20], cl = train.norm.knn[, 20], k = k.best, prob = T) 
+  
+# LR:
+results.df = data.frame(actual = valid.lr$stroke, lr.binary = as.factor(ifelse(pred.lr > cut_off.best, 1, 0)), lr.prob = pred.lr, ct.binary = pred.ct, ct.prob = pred.ct.prob)
+results.df.knn = data.frame(knn.binary = pred.knn, knn.prob = pred.knn.prob)
+
+#res = merge.data.frame(results.df, results.df.knn)
+
+accuracy.df = data.frame(conf.lr$overall[1], conf.ct$overall[1], conf.knn$overall[1])
+
+sensitivity.df = data.frame(conf.lr$byClass[1], conf.ct$byClass[1], conf.knn$byClass[1])
+```
+
+SHOW SENSITIVITY OF 3 METHODS:
 As the results of the full models of the CT and KNN are so low in sensitivity, there are inadequate for this highly unbalanced dataset. Therefore, doing a ensemble method by majority & average would be counterproductive, as the results yield would be lower than the logistic regression.
 
 ################################################################################
