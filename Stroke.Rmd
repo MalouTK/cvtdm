@@ -31,7 +31,10 @@ Stroke <- read.csv(file.choose())
 
 # Loading the relevant packages
 ```{r, message =FALSE, warning=FALSE}
-library(ggplot2) 
+library(ggplot2)
+library(corrplot)
+library(ggcorrplot)
+library(imputeTS)
 library(FNN)
 library(dummies)
 library(e1071)
@@ -150,13 +153,62 @@ We see that all "medical terms" (hypertension, heart disease, glucose level, BMI
 
 We see in the more "social terms" (gender, age, marriage status, work type, residence type). These variables have an impact on the age of the person (that is how they are directly linked to the medical terms & why they can be significant and should be taken into consideration before being potentially taken out by the model). Marriage status is the most clear example as older people usually have a higher chance of being married, the same goes for work type with the "children/never_worked categories connected to a young age" . It must be estimated and analysed in order to not assume spurious correlations. We need the data to back up any assumptions.
 
+# Correlation plots
+```{r}
+Stroke.corr <- Stroke
+Stroke.corr[,1] <- as.numeric(factor(Stroke.corr[,1]))
+Stroke.corr[,2] <- as.numeric(factor(Stroke.corr[,2]))
+Stroke.corr[,3] <- as.numeric(factor(Stroke.corr[,3]))
+Stroke.corr[,4] <- as.numeric(factor(Stroke.corr[,4]))
+Stroke.corr[,5] <- as.numeric(factor(Stroke.corr[,5]))
+Stroke.corr[,6] <- as.numeric(factor(Stroke.corr[,6]))
+Stroke.corr[,7] <- as.numeric(factor(Stroke.corr[,7]))
+Stroke.corr[,8] <- as.numeric(factor(Stroke.corr[,8]))
+Stroke.corr[,9] <- as.numeric(factor(Stroke.corr[,9]))
+Stroke.corr[,10] <- as.numeric(factor(Stroke.corr[,10]))
+Stroke.corr[,11] <- as.numeric(factor(Stroke.corr[,11]))
+
+corrplot(cor(na.omit(Stroke.corr)), method = "number")
+corr <- round(cor(na.omit(Stroke.corr)), 1)  
+ggcorrplot(corr, hc.order = TRUE, 
+           type = "lower", 
+           lab = TRUE, 
+           lab_size = 3, 
+           method="circle", 
+           colors = c("tomato2", "white", "springgreen3"), 
+           title="Correlogram of Stroke", 
+           ggtheme=theme_bw)
+heatmap(x = corr, col = c("green", "white", "red"), symm = TRUE)
+```
+
+
+```{r, warning=FALSE, message=FALSE}
+#Stroke.corr <- Stroke.fltr
+#Stroke.corr$stroke <- as.numeric(Stroke.corr$stroke)
+#Stroke.corr <- na.omit(Stroke.corr)
+#corr <- round(cor(Stroke.corr), 1)  
+#ggcorrplot(corr, hc.order = TRUE,type = "lower", lab = TRUE, lab_size = 2, method="circle", colors = c("tomato2", "white", "springgreen3"), title="Correlogram of Stroke", ggtheme=theme_bw)
+#heatmap(x = corr, col = c("green", "white", "red"), symm = TRUE)
+```
+
 # Preparing the data for analysis : 
 
 ````{r}
+# Common data standardization
 # Remove only row with gender = "Other"
 Stroke = Stroke[-3117,]
 # Set 2 levels for gender (and not 3):
 Stroke$gender <- factor(Stroke$gender, levels = c("Female", "Male"))
+
+# Get rid of correlated variables: ever_married and work_type_children:
+#Stroke[,-5]
+
+# Replace NAs with mean value (column bmi):
+Stroke <- na_mean(Stroke)
+
+# Omit rows with NAs in bmi (since LR and KNN does not consider NAs):
+#Stroke.withNA = Stroke  # keep a copy with NAs
+#Stroke <- na.exclude(Stroke)
 ```
 
 #### 1) Logistic Regression
@@ -222,6 +274,7 @@ ggplot(valid.lr) + geom_point(aes(x=avg_glucose_level,y=as.integer(stroke)-1, co
 
 ```{r}
 # Confusion matrix with cut-off 0.5:
+set.seed(1)
 pred.lr = predict(logit.reg, valid.lr[,-18], type = "response")
 confusionMatrix(as.factor(ifelse(pred.lr > 0.5, 1, 0)), valid.lr$stroke, positive = "1")
 fourfoldplot(confusionMatrix(as.factor(ifelse(pred.lr > 0.5, 1, 0)), valid.lr$stroke, positive = "1")$table)
@@ -244,7 +297,7 @@ for (i in 1:length(cut_off)){
   metrics.lr[i, 3] <- confusionMatrix(x, valid.lr$stroke, positive = "1")$overall[1]
 }
 
-cutoff.plot = ggplot(data= metrics.lr) + geom_line(aes(x=cut_off,y=sensitivity, color="Sensitivity")) + geom_line(aes(x=cut_off,y=accuracy, color = "Accuracy")) + geom_vline(xintercept = 0.044 , linetype="dashed") + theme_classic() + ggtitle("Sensitivity and Accuracy cut-off")
+cutoff.plot = ggplot(data= metrics.lr) + geom_line(aes(x=cut_off,y=sensitivity, color="Sensitivity")) + geom_line(aes(x=cut_off,y=accuracy, color = "Accuracy")) + geom_vline(xintercept = 0.0484 , linetype="dashed") + theme_classic() + ggtitle("Sensitivity and Accuracy cut-off")
 
 cutoff.plot
 metrics.lr$difference = sqrt((metrics.lr$accuracy - metrics.lr$sensitivity)^2)
@@ -252,13 +305,13 @@ cut_off.best = cut_off[which.min(metrics.lr$difference)]
 cut_off.best
 ```
 
-The best cut-off is 0.4; which is close to the ratio of stroke/non-stroke in presence in this hospital's dataset: 4.8728%.
+The best cut-off is 0.05; which is close to the ratio of stroke/non-stroke in presence in this hospital's dataset: 4.8728%.
 
 ```{r}
 # Confusion matrix with best cut-off (0.4):
-conf.lr = confusionMatrix(as.factor(ifelse(pred.lr > 0.04, 1, 0)), valid.lr$stroke, positive = "1")
+conf.lr = confusionMatrix(as.factor(ifelse(pred.lr > cut_off.best, 1, 0)), valid.lr$stroke, positive = "1")
 conf.lr
-fourfoldplot(confusionMatrix(as.factor(ifelse(pred.lr > 0.04, 1, 0)), valid.lr$stroke, positive = "1")$table)
+fourfoldplot(confusionMatrix(as.factor(ifelse(pred.lr > cut_off.best, 1, 0)), valid.lr$stroke, positive = "1")$table)
 ```
 #### 2) Classification Tree
 
@@ -267,7 +320,7 @@ fourfoldplot(confusionMatrix(as.factor(ifelse(pred.lr > 0.04, 1, 0)), valid.lr$s
 We partition into 60/40 and put categorical variables with more than 2 levels as dummies:
 ```{r, warning=FALSE, message=FALSE}
 set.seed(1)
-Stroke.dummy = Stroke
+Stroke.dummy = Stroke   # Stroke.withNA
 
 # Put work_type as dummy:
 work_type_Dummies <- cbind(Stroke.dummy[1:5], dummy(Stroke.dummy$work_type, sep = "_"), Stroke.dummy[7:11])
@@ -333,6 +386,8 @@ for (i in 1:length(row.cp)){
   metrics.ct[i, 2] <- confusionMatrix(x, valid.ct$stroke, positive = "1")$byClass[1]
   metrics.ct[i, 3] <- confusionMatrix(x, valid.ct$stroke, positive = "1")$overall[1]
 }
+# error: predict(prune(c.tree, cp = c.tree$cptable[,"CP"][row.cp][i]), valid.ct, type = "class", parms = list(prior= c(ratio_0, ratio_1)))
+
 
 cp.plot = ggplot(data= metrics.ct) + geom_line(aes(x=row.cp,y=sensitivity, color="Sensitivity")) + geom_line(aes(x=row.cp,y=accuracy, color = "Accuracy")) + geom_vline(xintercept = 0.001 , linetype="dashed") + theme_classic() + ggtitle("Sensitivity and Accuracy cp row")
 
@@ -356,7 +411,7 @@ conf.ct
 fourfoldplot(confusionMatrix(pred.best.pruned, valid.ct$stroke, positive = "1")$table)
 
 # Prediction on the training set itself:
-confusionMatrix(predict(best.pruned, train.ct, type = "class", parms = list(prior= c(ratio_0, ratio_1))), train.ct$stroke, positive = "1")
+#confusionMatrix(predict(best.pruned, train.ct, type = "class", parms = list(prior= c(ratio_0, ratio_1))), train.ct$stroke, positive = "1")
 ```
 
 #### 3) KNN
@@ -397,10 +452,11 @@ valid.norm.knn[, c(3,14,15)] = predict(norm.values, valid.knn[, c(3,14,15)])
 # Doing KNN
 
 ```{r}
+# KNN does not tolerate NAs: omit them
+#train.norm.knn <- na.omit(train.norm.knn)
+#valid.norm.knn <- na.omit(valid.norm.knn)
+
 ### Creating the graph for best K. (column 21/22 = stroke0/stroke1)
-# KNN admits no NA: omit Na in column bmi:
-train.norm.knn <- na.exclude(train.norm.knn)
-valid.norm.knn <- na.exclude(valid.norm.knn)
 
 set.seed(1)
 nk = 10
@@ -428,7 +484,7 @@ The best k is 1, which is logical for such an unbalanced dataset. Indeed, the hi
 ```{r}
 ### Creating the confusion Matrix --> need just to change the K = 1 & the 21 corresponds to the stroke variable. 
 
-pred.knn = knn(train.norm.knn[, -20], valid.norm.knn[, -20], cl = train.norm.knn[, 20], k = k.best) 
+pred.knn = knn(train.norm.knn[, -20], valid.norm.knn[, -20], cl = train.norm.knn[, 20], k = k.best, prob = T) 
 ## k.best = 1:
 conf.knn = confusionMatrix(pred.knn, valid.norm.knn[, 20], positive = "1")
 conf.knn
@@ -438,23 +494,92 @@ fourfoldplot(confusionMatrix(pred.knn, valid.norm.knn[, 20], positive = "1")$tab
 ## 4) Ensemble methods
 
 ```{r}
-pred.ct.prob = predict(best.pruned, valid.ct, type = "prob", parms = list(prior= c(ratio_0, ratio_1)))
+pred.ct.prob = predict(best.pruned, valid.ct, type = "prob", parms = list(prior= c(ratio_0, ratio_1)))[,2]
 
-pred.knn.prob = knn(train.norm.knn[, -20], valid.norm.knn[, -20], cl = train.norm.knn[, 20], k = k.best, prob = T) 
+pred.knn.prob = attr(pred.knn, "prob")
   
 # LR:
-results.df = data.frame(actual = valid.lr$stroke, lr.binary = as.factor(ifelse(pred.lr > cut_off.best, 1, 0)), lr.prob = pred.lr, ct.binary = pred.ct, ct.prob = pred.ct.prob)
-results.df.knn = data.frame(knn.binary = pred.knn, knn.prob = pred.knn.prob)
+results.df = data.frame(actual = valid.lr$stroke, lr.binary = as.factor(ifelse(pred.lr > cut_off.best, 1, 0)), lr.prob = pred.lr, ct.binary = pred.ct, ct.prob = pred.ct.prob, knn.binary = pred.knn, knn.prob = pred.knn.prob)
 
-#res = merge.data.frame(results.df, results.df.knn)
+for(i in 1:NROW(results.df)){
+  fix_prob = if(results.df[i,"knn.binary"]==1) results.df[i,"knn.prob"] else 1 - results.df[i,"knn.prob"]
+  results.df[i,"knn.prob"] = fix_prob
+}
 
-accuracy.df = data.frame(conf.lr$overall[1], conf.ct$overall[1], conf.knn$overall[1])
+accuracy.df = data.frame("LR.Accuracy" = conf.lr$overall[1], "CT.Accuracy" = conf.ct$overall[1], "KNN.Accuracy" = conf.knn$overall[1])
 
-sensitivity.df = data.frame(conf.lr$byClass[1], conf.ct$byClass[1], conf.knn$byClass[1])
+sensitivity.df = data.frame("LR.Sensitivity" = conf.lr$byClass[1], "CT.Sensitivity" = conf.ct$byClass[1], "KNN.Sensitivity" = conf.knn$byClass[1])
 ```
 
-SHOW SENSITIVITY OF 3 METHODS:
-As the results of the full models of the CT and KNN are so low in sensitivity, there are inadequate for this highly unbalanced dataset. Therefore, doing a ensemble method by majority & average would be counterproductive, as the results yield would be lower than the logistic regression.
+```{r}
+# Ensembles:
+results.df$average.prob = apply(results.df[,c(3,5,7)],FUN = mean, MARGIN = 1)
+results.df[,c(2,4,6)] = sapply(results.df[,c(2,4,6)], as.integer) - 1
+results.df$major.voting = as.factor(apply(results.df[,c(2,4,6)],FUN = function(x) 
+names(table(melt(x)$value))[which.max(table(melt(x)$value))], MARGIN = 1))
+
+# Majority vote (ensemble):
+accuracy.df = cbind(accuracy.df, ensemble = confusionMatrix(results.df$major.voting, results.df$actual, positive = "1")$overall[1])
+sensitivity.df = cbind(sensitivity.df, ensemble = confusionMatrix(results.df$major.voting, results.df$actual, positive = "1")$byClass[1])
+```
+
+```{r, warning=FALSE, message=FALSE}
+# Average (ensemble):
+# Find the cutoff for average (ensemble): that maximizes both sensitivity and overall accuracy
+
+# Find the best ensemble cut-off:
+cut_off.ens = seq(0.01,0.99,0.01)
+metrics.ens <- data.frame(cut_off.ens, sensitivity = rep(0, length(cut_off.ens)), accuracy = rep(0, length(cut_off.ens)))
+
+for (i in 1:length(cut_off.ens)){
+  x <- as.factor(ifelse(results.df$average.prob >= cut_off.ens[i],1,0))
+  metrics.ens[i, 2] <- confusionMatrix(x, results.df$actual, positive = "1")$byClass[1]
+  metrics.ens[i, 3] <- confusionMatrix(x, results.df$actual, positive = "1")$overall[1]
+}
+
+cutoff.plot.ens = ggplot(data= metrics.ens) + geom_line(aes(x=cut_off.ens,y=sensitivity, color="Sensitivity")) + geom_line(aes(x=cut_off.ens,y=accuracy, color = "Accuracy")) + geom_vline(xintercept = 0.019 , linetype="dashed") + theme_classic() + ggtitle("Sensitivity and Accuracy cut-off")
+
+cutoff.plot.ens
+metrics.ens$difference = sqrt((metrics.ens$accuracy - metrics.ens$sensitivity)^2)
+cut_off.best.ens = cut_off.ens[which.min(metrics.ens$difference)]
+cut_off.best.ens
+
+
+accuracy.df = cbind(accuracy.df, ensemble.prob = confusionMatrix(as.factor(ifelse(results.df$average.prob > cut_off.best.ens, 1, 0)), results.df$actual, positive = "1")$overall[1])
+sensitivity.df = cbind(sensitivity.df, ensemble.prob = confusionMatrix(as.factor(ifelse(results.df$average.prob > cut_off.best.ens, 1, 0)), results.df$actual, positive = "1")$byClass[1])
+```
+
+
+```{r, warning=FALSE, message=FALSE}
+accuracy.df.melt = melt(accuracy.df)
+accuracy.plot = ggplot(aes(x=reorder(variable, value), y=value), data = accuracy.df.melt) + geom_col(fill="darkblue") + ylab("accuracy") + xlab("model") +  
+geom_text(aes(label = round(value, 4)), vjust = -0.5) + theme_classic() 
+accuracy.plot
+
+sensitivity.df.melt = melt(sensitivity.df)
+sensitivity.plot = ggplot(aes(x=reorder(variable, value), y=value), data = sensitivity.df.melt) + geom_col(fill="darkblue") + ylab("sensitivity") + xlab("model") +  
+geom_text(aes(label = round(value, 4)), vjust = -0.5) + theme_classic() 
+sensitivity.plot
+```
+
+```{r}
+acc = c(accuracy.df[1,1], accuracy.df[1,2], accuracy.df[1,3], accuracy.df[1,4], accuracy.df[1,5])
+sens = c(sensitivity.df[1,1], sensitivity.df[1,2], sensitivity.df[1,3], sensitivity.df[1,4], sensitivity.df[1,5])
+method = c("LR", "CT", "KNN", "Ensemble", "Ensemble.prob")
+both.df = data.frame(method, "accuracy"= acc, "sensitivity"=sens)
+
+both.df$sum = both.df$accuracy + both.df$sensitivity
+
+#barplot(sum ~ method, both.df, main = "Methods overall comparison", ylab = "accuracy + sensitivity", xlab = "", las = 2)
+
+both.plot = ggplot(aes(x=method, y=sum), data = both.df) + geom_col(fill = "darkgreen") + ylab("sum") + xlab("model") + ggtitle("Methods overall comparison") + geom_text(aes(label = round(sum,4)), colour = "grey38", size = 4, vjust = -0.3) + theme_classic() 
+both.plot
+```
+
+COMPARISON OF ALL METHODS:
+As the results of the full models of the CT and KNN are so low in sensitivity, there are inadequate for this highly unbalanced dataset. Therefore, our assumption was that doing a ensemble method by majority & average would be counterproductive, as the results yield would be lower than the logistic regression.
+The ensemble prob method, that allows for a cutoff, is actually much better than we thought. Its balanced predictive power is good, though still lower than LR.
+=> Blindly, ensemble methods allow for a good result.
 
 ################################################################################
 
