@@ -229,6 +229,7 @@ dim(valid.lr)
 # Doing LR
 
 ```{r}
+set.seed(1)
 # 1) Logistic Regression
 logit.reg <- glm(stroke ~., data = train.lr, family = "binomial")
 options(scipen = 999)
@@ -277,7 +278,7 @@ ggplot(valid.lr) + geom_point(aes(x=avg_glucose_level,y=as.integer(stroke)-1, co
 set.seed(1)
 pred.lr = predict(logit.reg, valid.lr[,-18], type = "response")
 confusionMatrix(as.factor(ifelse(pred.lr > 0.5, 1, 0)), valid.lr$stroke, positive = "1")
-fourfoldplot(confusionMatrix(as.factor(ifelse(pred.lr > 0.5, 1, 0)), valid.lr$stroke, positive = "1")$table)
+fourfoldplot(confusionMatrix(as.factor(ifelse(pred.lr > 0.5, 1, 0)), valid.lr$stroke, positive = "1")$table, color = c("#CC6666", "#99CC99"))
 ```
 
 This model is not able to predict any stroke; it is not efficient for the goal of our analysis. It is most probable that we have too many unnecessary variables in our model.
@@ -311,7 +312,7 @@ The best cut-off is 0.05; which is close to the ratio of stroke/non-stroke in pr
 # Confusion matrix with best cut-off (0.4):
 conf.lr = confusionMatrix(as.factor(ifelse(pred.lr > cut_off.best, 1, 0)), valid.lr$stroke, positive = "1")
 conf.lr
-fourfoldplot(confusionMatrix(as.factor(ifelse(pred.lr > cut_off.best, 1, 0)), valid.lr$stroke, positive = "1")$table)
+fourfoldplot(confusionMatrix(as.factor(ifelse(pred.lr > cut_off.best, 1, 0)), valid.lr$stroke, positive = "1")$table, color = c("#CC6666", "#99CC99"))
 ```
 #### 2) Classification Tree
 
@@ -408,7 +409,7 @@ The best pruned tree for predictive stroke is the full classification tree.
 # Confusion matrix for CT:
 conf.ct = confusionMatrix(pred.best.pruned, valid.ct$stroke, positive = "1")
 conf.ct
-fourfoldplot(confusionMatrix(pred.best.pruned, valid.ct$stroke, positive = "1")$table)
+fourfoldplot(confusionMatrix(pred.best.pruned, valid.ct$stroke, positive = "1")$table, color = c("#CC6666", "#99CC99"))
 
 # Prediction on the training set itself:
 #confusionMatrix(predict(best.pruned, train.ct, type = "class", parms = list(prior= c(ratio_0, ratio_1))), train.ct$stroke, positive = "1")
@@ -488,7 +489,7 @@ pred.knn = knn(train.norm.knn[, -20], valid.norm.knn[, -20], cl = train.norm.knn
 ## k.best = 1:
 conf.knn = confusionMatrix(pred.knn, valid.norm.knn[, 20], positive = "1")
 conf.knn
-fourfoldplot(confusionMatrix(pred.knn, valid.norm.knn[, 20], positive = "1")$table)
+fourfoldplot(confusionMatrix(pred.knn, valid.norm.knn[, 20], positive = "1")$table, color = c("#CC6666", "#99CC99"))
 ```
 
 ## 4) Ensemble methods
@@ -580,6 +581,35 @@ COMPARISON OF ALL METHODS:
 As the results of the full models of the CT and KNN are so low in sensitivity, there are inadequate for this highly unbalanced dataset. Therefore, our assumption was that doing a ensemble method by majority & average would be counterproductive, as the results yield would be lower than the logistic regression.
 The ensemble prob method, that allows for a cutoff, is actually much better than we thought. Its balanced predictive power is good, though still lower than LR.
 => Blindly, ensemble methods allow for a good result.
+
+
+## 5) Best model: Prediction
+
+LR is the best fitted model => use this method as the basis for prediction.
+
+```{r}
+set.seed(1)
+# Reduced GLM
+logit.reg2 <- glm(stroke ~ age + hypertension + avg_glucose_level, data = train.lr, family = "binomial")
+options(scipen = 999)
+summary(logit.reg2)
+
+pred.lr2 = predict(logit.reg2, valid.lr[,-18], type = "response")
+# Confusion matrix with best cut-off (0.4):
+conf.lr2 = confusionMatrix(as.factor(ifelse(pred.lr2 > cut_off.best, 1, 0)), valid.lr$stroke, positive = "1")
+conf.lr2
+fourfoldplot(confusionMatrix(as.factor(ifelse(pred.lr2 > cut_off.best, 1, 0)), valid.lr$stroke, positive = "1")$table, color = c("#CC6666", "#99CC99"))
+
+lr.plots = both.df[1,c(1,4)]
+lr.plots[2,1] = c("LR.reduced")
+lr.plots[2,2] = conf.lr2$overall[1]+conf.lr2$byClass[1]
+
+lr.plots.plot = ggplot(aes(x=method, y=sum), data = lr.plots) + geom_col(fill = "darkviolet") + ylab("sum") + xlab("model") + ggtitle("LR VS reduced LR") + geom_text(aes(label = round(sum,4)), colour = "grey38", size = 4, vjust = -0.3) + theme_classic() 
+lr.plots.plot
+```
+The reduced model has 1 more stroke prediction, for ~30 less accurate non-stroke predictions
+
+
 
 ################################################################################
 
