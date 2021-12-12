@@ -8,6 +8,8 @@ output: html_document
 
 NOTE:
 
+- Use LDA on categorical variables only?
+- ...
 
 ---
 ```{r setup, include=FALSE}
@@ -49,6 +51,8 @@ library(rpart)
 library(rpart.plot)
 library(MASS)
 library(DiscriMiner)
+library(gains)
+library(pROC)
 ```
 
  
@@ -178,17 +182,7 @@ ggcorrplot(corr, hc.order = TRUE,
            colors = c("tomato2", "white", "springgreen3"), 
            title="Correlogram of Stroke", 
            ggtheme=theme_bw)
-heatmap(x = corr, col = c("green", "white", "red"), symm = TRUE)
-```
-
-
-```{r, warning=FALSE, message=FALSE}
-#Stroke.corr <- Stroke.fltr
-#Stroke.corr$stroke <- as.numeric(Stroke.corr$stroke)
-#Stroke.corr <- na.omit(Stroke.corr)
-#corr <- round(cor(Stroke.corr), 1)  
-#ggcorrplot(corr, hc.order = TRUE,type = "lower", lab = TRUE, lab_size = 2, method="circle", colors = c("tomato2", "white", "springgreen3"), title="Correlogram of Stroke", ggtheme=theme_bw)
-#heatmap(x = corr, col = c("green", "white", "red"), symm = TRUE)
+heatmap(x = corr, col = c("firebrick2", "white", "limegreen"), symm = TRUE)
 ```
 
 # Preparing the data for analysis : 
@@ -201,7 +195,7 @@ Stroke = Stroke[-3117,]
 Stroke$gender <- factor(Stroke$gender, levels = c("Female", "Male"))
 
 # Get rid of correlated variables: ever_married and work_type_children:
-#Stroke[,-5]
+Stroke = Stroke[,-5]
 
 # Replace NAs with mean value (column bmi):
 Stroke <- na_mean(Stroke)
@@ -218,13 +212,18 @@ Stroke <- na_mean(Stroke)
 We split 60%-Training, 40%-Validation and normalize the data 
 ```{r}
 set.seed(1)
-train.lr <- sample(row.names(Stroke), 0.6*dim(Stroke)[1])
-valid.lr <- setdiff(row.names(Stroke), train.lr)
-train.lr <- Stroke[train.lr, ]
-valid.lr <- Stroke[valid.lr, ]
+train.index.lr = sample(c(1:NROW(Stroke)), round(NROW(Stroke)*0.5))
+train.lr = Stroke[train.index.lr,]  # Train set 
+valid.test.lr = Stroke[-train.index.lr,]
+valid.index.lr = sample(c(1:NROW(valid.test.lr)), round(NROW(valid.test.lr)*0.6))
+valid.lr = valid.test.lr[valid.index.lr,] # Valid set 
+test.lr = valid.test.lr[-valid.index.lr,] # Test set 
+
 dim(train.lr)
 dim(valid.lr)
+dim(test.lr)
 # The data has been correctly partitioned into 60% (3'065 obs) in T and 40% in V (2'044 obs)
+
 ```
 # Doing LR
 
@@ -251,7 +250,7 @@ coefs <- coef(mod)
 x_plot <- with(train.lr, seq(min(age), max(age)+25, length.out = 200))
 y_plot <- plogis(coefs[1] + coefs[2] * x_plot)
 
-ggplot(valid.lr) + geom_point(aes(x=age,y=as.integer(stroke)-1, color=stroke)) + geom_line(aes(x= x_plot, y=y_plot), col = "black", data = data.frame(x_plot,y_plot)) + xlab("Age") + ylab("Stroke") + scale_x_continuous(breaks = seq(0,250,50)) + theme_classic()
+ggplot(valid.lr) + geom_point(aes(x=age,y=as.integer(stroke)-1, color=stroke)) + geom_line(aes(x= x_plot, y=y_plot), col = "black", data = data.frame(x_plot,y_plot)) + xlab("Age") + ylab("Stroke") + labs(title = " Age vs Stroke") + scale_x_continuous(breaks = seq(0,250,50)) + theme_classic()
 
 # For hypertension:
 mod2 <- glm(stroke ~ hypertension, data = train.lr, binomial("logit"))
@@ -259,15 +258,23 @@ coefs2 <- coef(mod2)
 x_plot2 <- with(train.lr, seq(min(hypertension), max(hypertension), length.out = 200))
 y_plot2 <- plogis(coefs2[1] + coefs2[2] * x_plot2)
 
-ggplot(valid.lr) + geom_point(aes(x=hypertension,y=as.integer(stroke)-1, color=stroke)) + geom_line(aes(x= x_plot2, y=y_plot2), col = "black", data = data.frame(x_plot2,y_plot2)) + xlab("Hypertension") + ylab("Stroke") + scale_x_continuous(breaks = seq(0,250,50)) + theme_classic()
+ggplot(valid.lr) + geom_point(aes(x=hypertension,y=as.integer(stroke)-1, color=stroke)) + geom_line(aes(x= x_plot2, y=y_plot2), col = "black", data = data.frame(x_plot2,y_plot2)) + xlab("Hypertension") + ylab("Stroke") + labs(title = " Hypertension vs Stroke") + scale_x_continuous(breaks = seq(0,250,50)) + theme_classic()
 
-# For average glucose level:
-mod3 <- glm(stroke ~ avg_glucose_level, data = train.lr, binomial("logit"))
+# For heart_disease:
+mod3 <- glm(stroke ~ heart_disease, data = train.lr, binomial("logit"))
 coefs3 <- coef(mod3)
-x_plot3 <- with(train.lr, seq(min(avg_glucose_level), max(avg_glucose_level)+25, length.out = 200))
+x_plot3 <- with(train.lr, seq(min(heart_disease), max(heart_disease), length.out = 200))
 y_plot3 <- plogis(coefs3[1] + coefs3[2] * x_plot3)
 
-ggplot(valid.lr) + geom_point(aes(x=avg_glucose_level,y=as.integer(stroke)-1, color=stroke)) + geom_line(aes(x= x_plot3, y=y_plot3), col = "black", data = data.frame(x_plot3,y_plot3)) + xlab("Average glucose") + ylab("Stroke") + scale_x_continuous(breaks = seq(0,250,50)) + theme_classic()
+ggplot(valid.lr) + geom_point(aes(x=heart_disease,y=as.integer(stroke)-1, color=stroke)) + geom_line(aes(x= x_plot3, y=y_plot3), col = "black", data = data.frame(x_plot3,y_plot3)) + xlab("Heart Disease") + ylab("Stroke") + labs(title = " Heart disease vs Stroke") + scale_x_continuous(breaks = seq(0,250,50)) + theme_classic()
+
+# For average glucose level:
+mod4 <- glm(stroke ~ avg_glucose_level, data = train.lr, binomial("logit"))
+coefs4 <- coef(mod4)
+x_plot4 <- with(train.lr, seq(min(avg_glucose_level), max(avg_glucose_level)+25, length.out = 200))
+y_plot4 <- plogis(coefs4[1] + coefs4[2] * x_plot4)
+
+ggplot(valid.lr) + geom_point(aes(x=avg_glucose_level,y=as.integer(stroke)-1, color=stroke)) + geom_line(aes(x= x_plot4, y=y_plot4), col = "black", data = data.frame(x_plot4,y_plot4)) + xlab("Average glucose") + ylab("Stroke") + labs(title = " Average glucose level vs Stroke") + scale_x_continuous(breaks = seq(0,250,50)) + theme_classic()
 ```
 
 - Age: The older you get, the more probable it is you get a stroke. The first instances of stroke arises around 30 year of age according to the graph; and it start rising the older you get.
@@ -276,7 +283,7 @@ ggplot(valid.lr) + geom_point(aes(x=avg_glucose_level,y=as.integer(stroke)-1, co
 ```{r}
 # Confusion matrix with cut-off 0.5:
 set.seed(1)
-pred.lr = predict(logit.reg, valid.lr[,-18], type = "response")
+pred.lr = predict(logit.reg, valid.lr[,-10], type = "response")
 confusionMatrix(as.factor(ifelse(pred.lr > 0.5, 1, 0)), valid.lr$stroke, positive = "1")
 fourfoldplot(confusionMatrix(as.factor(ifelse(pred.lr > 0.5, 1, 0)), valid.lr$stroke, positive = "1")$table, color = c("#CC6666", "#99CC99"))
 ```
@@ -298,7 +305,7 @@ for (i in 1:length(cut_off)){
   metrics.lr[i, 3] <- confusionMatrix(x, valid.lr$stroke, positive = "1")$overall[1]
 }
 
-cutoff.plot = ggplot(data= metrics.lr) + geom_line(aes(x=cut_off,y=sensitivity, color="Sensitivity")) + geom_line(aes(x=cut_off,y=accuracy, color = "Accuracy")) + geom_vline(xintercept = 0.0484 , linetype="dashed") + theme_classic() + ggtitle("Sensitivity and Accuracy cut-off")
+cutoff.plot = ggplot(data= metrics.lr) + geom_line(aes(x=cut_off,y=sensitivity, color="Sensitivity")) + geom_line(aes(x=cut_off,y=accuracy, color = "Accuracy")) + geom_vline(xintercept = 0.057 , linetype="dashed") + theme_classic() + ggtitle("Sensitivity and Accuracy cut-off")
 
 cutoff.plot
 metrics.lr$difference = sqrt((metrics.lr$accuracy - metrics.lr$sensitivity)^2)
@@ -306,7 +313,7 @@ cut_off.best = cut_off[which.min(metrics.lr$difference)]
 cut_off.best
 ```
 
-The best cut-off is 0.05; which is close to the ratio of stroke/non-stroke in presence in this hospital's dataset: 4.8728%.
+The best cut-off is 0.06; which is closer to the ratio of stroke/non-stroke in presence in this hospital's dataset: 4.8728%.
 
 ```{r}
 # Confusion matrix with best cut-off (0.4):
@@ -324,20 +331,29 @@ set.seed(1)
 Stroke.dummy = Stroke   # Stroke.withNA
 
 # Put work_type as dummy:
-work_type_Dummies <- cbind(Stroke.dummy[1:5], dummy(Stroke.dummy$work_type, sep = "_"), Stroke.dummy[7:11])
-names(work_type_Dummies)[6:10] <- c("children","Govt_job", "Never_Worked", "Private", "Self-employed")
+work_type_Dummies <- cbind(Stroke.dummy[1:4], dummy(Stroke.dummy$work_type, sep = "_"), Stroke.dummy[6:10])
+names(work_type_Dummies)[5:9] <- c("children","Govt_job", "Never_Worked", "Private", "Self-employed")
 #work_type_Dummies
 Stroke.dummy <- work_type_Dummies
+```
 
+```{r, warning=FALSE, message=FALSE} 
 # Put smoking_status as dummy:
-smoking_status_Dummies <- cbind( Stroke.dummy[1:13], dummy(Stroke.dummy$smoking_status, sep = "_"), Stroke.dummy[15])
-names(smoking_status_Dummies)[14:17] <- c("formerly_smoked", "never_smoked", "smokes", "unknown")
+smoking_status_Dummies <- cbind( Stroke.dummy[1:12], dummy(Stroke.dummy$smoking_status, sep = "_"), Stroke.dummy[14])
+names(smoking_status_Dummies)[13:16] <- c("formerly_smoked", "never_smoked", "smokes", "unknown")
 #smoking_status_Dummies
 Stroke.dummy <- smoking_status_Dummies
 
-train.index.ct = sample(NROW(Stroke.dummy), round(NROW(Stroke.dummy)*0.6))
-train.ct = Stroke.dummy[train.index.ct,]
-valid.ct = Stroke.dummy[- train.index.ct,]
+train.index.ct = sample(c(1:NROW(Stroke.dummy)), round(NROW(Stroke.dummy)*0.5))
+train.ct = Stroke.dummy[train.index.ct,]  # Train set 
+valid.test.ct = Stroke.dummy[-train.index.ct,]
+valid.index.ct = sample(c(1:NROW(valid.test.ct)), round(NROW(valid.test.ct)*0.6))
+valid.ct = valid.test.ct[valid.index.ct,] # Valid set 
+test.ct = valid.test.ct[-valid.index.ct,] # Test set 
+
+dim(train.ct)
+dim(valid.ct)
+dim(test.ct)
 ```
 
 # Doing CT
@@ -387,10 +403,8 @@ for (i in 1:length(row.cp)){
   metrics.ct[i, 2] <- confusionMatrix(x, valid.ct$stroke, positive = "1")$byClass[1]
   metrics.ct[i, 3] <- confusionMatrix(x, valid.ct$stroke, positive = "1")$overall[1]
 }
-# error: predict(prune(c.tree, cp = c.tree$cptable[,"CP"][row.cp][i]), valid.ct, type = "class", parms = list(prior= c(ratio_0, ratio_1)))
 
-
-cp.plot = ggplot(data= metrics.ct) + geom_line(aes(x=row.cp,y=sensitivity, color="Sensitivity")) + geom_line(aes(x=row.cp,y=accuracy, color = "Accuracy")) + geom_vline(xintercept = 0.001 , linetype="dashed") + theme_classic() + ggtitle("Sensitivity and Accuracy cp row")
+cp.plot = ggplot(data= metrics.ct) + geom_line(aes(x=row.cp,y=sensitivity, color="Sensitivity")) + geom_line(aes(x=row.cp,y=accuracy, color = "Accuracy")) + theme_classic() + ggtitle("Sensitivity and Accuracy cp row")
 
 cp.plot
 metrics.ct$difference = sqrt((metrics.ct$accuracy - metrics.ct$sensitivity)^2)
@@ -403,16 +417,13 @@ best.pruned <- prune(c.tree, cp = cp.best)
 pred.best.pruned <- predict(best.pruned, valid.ct, type = "class", parms = list(prior= c(ratio_0, ratio_1)))
 prp(best.pruned)
 ```
-The best pruned tree for predictive stroke is the full classification tree.
+The best pruned tree for predictive stroke is (almost) the full classification tree.
 
 ```{r}
 # Confusion matrix for CT:
 conf.ct = confusionMatrix(pred.best.pruned, valid.ct$stroke, positive = "1")
 conf.ct
 fourfoldplot(confusionMatrix(pred.best.pruned, valid.ct$stroke, positive = "1")$table, color = c("#CC6666", "#99CC99"))
-
-# Prediction on the training set itself:
-#confusionMatrix(predict(best.pruned, train.ct, type = "class", parms = list(prior= c(ratio_0, ratio_1))), train.ct$stroke, positive = "1")
 ```
 
 #### 3) KNN
@@ -424,7 +435,7 @@ We partition into 60/40, create dummy variables, change all predictors to numeri
 # Dummify:
 Stroke$stroke <- as.integer(ifelse(Stroke$stroke == "0", 0,1))  # change stroke to int during dummification
 dummies = dummyVars(~ ., data=Stroke)
-Stroke.fltr = as.data.frame(predict(dummies, newdata = Stroke)[,-11])
+Stroke.fltr = as.data.frame(predict(dummies, newdata = Stroke)[,-10])
 Stroke.fltr$stroke = as.factor(Stroke.fltr$stroke)  # change stroke back to factor
 str(Stroke.fltr)
 ```
@@ -436,27 +447,38 @@ set.seed(1)
 train.index.knn = sample(NROW(Stroke.fltr), round(NROW(Stroke.fltr)*0.6))
 train.knn = Stroke.fltr[ train.index.knn,]
 valid.knn  = Stroke.fltr[-train.index.knn,]
+
+
+train.index.knn = sample(c(1:NROW(Stroke.fltr)), round(NROW(Stroke.fltr)*0.5))
+train.knn = Stroke.fltr[train.index.knn,]  # Train set 
+valid.test.knn = Stroke.fltr[-train.index.knn,]
+valid.index.knn = sample(c(1:NROW(valid.test.knn)), round(NROW(valid.test.knn)*0.6))
+valid.knn = valid.test.knn[valid.index.knn,] # Valid set 
+test.knn = valid.test.knn[-valid.index.knn,] # Test set 
+
+dim(train.knn)
+dim(valid.knn)
+dim(test.knn)
+
 print(table(train.knn$stroke) / table(Stroke.fltr$stroke)) #Training set partition
 print(table(valid.knn$stroke) / table(Stroke.fltr$stroke)) #Validation set partition
+print(table(test.knn$stroke) / table(Stroke.fltr$stroke)) #Validation set partition
 ```
-
 ```{r, warning=FALSE, message=FALSE}
 # Normalize the dummified sets:
 train.norm.knn = train.knn
 valid.norm.knn = valid.knn
+test.norm.knn = test.knn
 # Normalization of numerical variables:
-norm.values = preProcess(train.knn[, c(3,14,15)], method=c("range"))
-train.norm.knn[, c(3,14,15)] = predict(norm.values, train.knn[, c(3,14,15)])
-valid.norm.knn[, c(3,14,15)] = predict(norm.values, valid.knn[, c(3,14,15)])
+norm.values = preProcess(train.knn[, c(3,12,13)], method=c("range"))
+train.norm.knn[, c(3,12,13)] = predict(norm.values, train.knn[, c(3,12,13)])
+valid.norm.knn[, c(3,12,13)] = predict(norm.values, valid.knn[, c(3,12,13)])
+test.norm.knn[, c(3,12,13)] = predict(norm.values, test.knn[, c(3,12,13)])
 ```
 
 # Doing KNN
 
 ```{r}
-# KNN does not tolerate NAs: omit them
-#train.norm.knn <- na.omit(train.norm.knn)
-#valid.norm.knn <- na.omit(valid.norm.knn)
-
 ### Creating the graph for best K. (column 21/22 = stroke0/stroke1)
 
 set.seed(1)
@@ -464,9 +486,9 @@ nk = 10
 metrics.knn <- data.frame(k = seq(1, nk, 1), accuracy = rep(0, nk), sensitivity = rep(0, nk), F1_score = rep(0, nk))
 
 for(i in 1:nk) {
-  knn.pred = knn(train.norm.knn[, -20], valid.norm.knn[, -20], cl = train.norm.knn[, 20], k = i)
-  metrics.knn[i, 2] = confusionMatrix(knn.pred, valid.norm.knn[, 20], positive = "1")$overall[1]
-  metrics.knn[i, 3] = confusionMatrix(knn.pred, valid.norm.knn[, 20], positive = "1")$byClass[1]
+  knn.pred = knn(train.norm.knn[, -18], valid.norm.knn[, -18], cl = train.norm.knn[, 18], k = i)
+  metrics.knn[i, 2] = confusionMatrix(knn.pred, valid.norm.knn[, 18], positive = "1")$overall[1]
+  metrics.knn[i, 3] = confusionMatrix(knn.pred, valid.norm.knn[, 18], positive = "1")$byClass[1]
 }
 
 accuracy.plot = ggplot(data= metrics.knn) + geom_line(aes(x=k,y=accuracy), color="darkred") + theme_classic()
@@ -480,19 +502,19 @@ metrics.knn$difference = sqrt((metrics.knn$accuracy - metrics.knn$sensitivity)^2
 k.best = metrics.knn$k[which.min(metrics.knn$difference)]
 k.best
 ```
-The best k is 1, which is logical for such an unbalanced dataset. Indeed, the higher the value of k (= number of reference neighbors), the higher the chance of belonging to the majority group, especially in our case where non-stroke represents 95% of observations. So in case of unbalanced dataset, instead of faulting the results (with a bias due to a lack of diversity), a lower k helps being more precise.
+The best k is 2, which is logical for such an unbalanced dataset. Indeed, the higher the value of k (= number of reference neighbors), the higher the chance of belonging to the majority group, especially in our case where non-stroke represents 95% of observations. So in case of unbalanced dataset, instead of faulting the results (with a bias due to a lack of diversity), a lower k helps being more precise.
 
 ```{r}
 ### Creating the confusion Matrix --> need just to change the K = 1 & the 21 corresponds to the stroke variable. 
 
-pred.knn = knn(train.norm.knn[, -20], valid.norm.knn[, -20], cl = train.norm.knn[, 20], k = k.best, prob = T) 
+pred.knn = knn(train.norm.knn[, -18], valid.norm.knn[, -18], cl = train.norm.knn[, 18], k = k.best, prob = T) 
 ## k.best = 1:
-conf.knn = confusionMatrix(pred.knn, valid.norm.knn[, 20], positive = "1")
+conf.knn = confusionMatrix(pred.knn, valid.norm.knn[, 18], positive = "1")
 conf.knn
-fourfoldplot(confusionMatrix(pred.knn, valid.norm.knn[, 20], positive = "1")$table, color = c("#CC6666", "#99CC99"))
+fourfoldplot(confusionMatrix(pred.knn, valid.norm.knn[, 18], positive = "1")$table, color = c("#CC6666", "#99CC99"))
 ```
 
-## 4) Ensemble methods
+#### 4) Ensemble methods
 
 ```{r}
 pred.ct.prob = predict(best.pruned, valid.ct, type = "prob", parms = list(prior= c(ratio_0, ratio_1)))[,2]
@@ -538,7 +560,7 @@ for (i in 1:length(cut_off.ens)){
   metrics.ens[i, 3] <- confusionMatrix(x, results.df$actual, positive = "1")$overall[1]
 }
 
-cutoff.plot.ens = ggplot(data= metrics.ens) + geom_line(aes(x=cut_off.ens,y=sensitivity, color="Sensitivity")) + geom_line(aes(x=cut_off.ens,y=accuracy, color = "Accuracy")) + geom_vline(xintercept = 0.019 , linetype="dashed") + theme_classic() + ggtitle("Sensitivity and Accuracy cut-off")
+cutoff.plot.ens = ggplot(data= metrics.ens) + geom_line(aes(x=cut_off.ens,y=sensitivity, color="Sensitivity")) + geom_line(aes(x=cut_off.ens,y=accuracy, color = "Accuracy")) + geom_vline(xintercept = 0.03 , linetype="dashed") + theme_classic() + ggtitle("Sensitivity and Accuracy cut-off")
 
 cutoff.plot.ens
 metrics.ens$difference = sqrt((metrics.ens$accuracy - metrics.ens$sensitivity)^2)
@@ -561,6 +583,16 @@ sensitivity.df.melt = melt(sensitivity.df)
 sensitivity.plot = ggplot(aes(x=reorder(variable, value), y=value), data = sensitivity.df.melt) + geom_col(fill="darkblue") + ylab("sensitivity") + xlab("model") +  
 geom_text(aes(label = round(value, 4)), vjust = -0.5) + theme_classic() 
 sensitivity.plot
+
+both.melt = accuracy.df.melt
+both.melt[,1] = c("LR", "CT", "KNN", "Ensemble", "Ensemble.prob")
+both.melt[,3] <- sensitivity.df.melt$value
+colnames(both.melt) <- c("method", "accuracy", "sensitivity")
+
+both.melt.plot = ggplot(both.melt, aes(x = method, y= accuracy)) + geom_col(aes(fill = "Accuracy"), width = 0.45, position = position_nudge(x = -0.225)) + geom_text(aes(label = round(accuracy,3)), colour = "grey38", size = 3.5, vjust = -0.3, position = position_nudge(x = -0.225))+ 
+  geom_col(aes(y = sensitivity, fill = "Sensitivity"), width = 0.45, position = position_nudge(x = 0.225)) + geom_text(aes(label = round(sensitivity,3)), colour = "grey38", size = 3.5, vjust = -0.3, position = position_nudge(x = 0.225))+ 
+  ylab("Model performance") + xlab("model") + ggtitle("Models comparison") + scale_fill_manual(values = c("lightskyblue", "mediumvioletred")) + theme_classic()
+both.melt.plot
 ```
 
 ```{r}
@@ -583,18 +615,18 @@ The ensemble prob method, that allows for a cutoff, is actually much better than
 => Blindly, ensemble methods allow for a good result.
 
 
-## 5) Best model: Prediction
+#### 5) Best model: Prediction
 
 LR is the best fitted model => use this method as the basis for prediction.
 
 ```{r}
 set.seed(1)
 # Reduced GLM
-logit.reg2 <- glm(stroke ~ age + hypertension + avg_glucose_level, data = train.lr, family = "binomial")
+logit.reg2 <- glm(stroke ~ age + hypertension + heart_disease + avg_glucose_level , data = train.lr, family = "binomial")
 options(scipen = 999)
 summary(logit.reg2)
 
-pred.lr2 = predict(logit.reg2, valid.lr[,-18], type = "response")
+pred.lr2 = predict(logit.reg2, valid.lr[,-10], type = "response")
 # Confusion matrix with best cut-off (0.4):
 conf.lr2 = confusionMatrix(as.factor(ifelse(pred.lr2 > cut_off.best, 1, 0)), valid.lr$stroke, positive = "1")
 conf.lr2
@@ -607,49 +639,122 @@ lr.plots[2,2] = conf.lr2$overall[1]+conf.lr2$byClass[1]
 lr.plots.plot = ggplot(aes(x=method, y=sum), data = lr.plots) + geom_col(fill = "darkviolet") + ylab("sum") + xlab("model") + ggtitle("LR VS reduced LR") + geom_text(aes(label = round(sum,4)), colour = "grey38", size = 4, vjust = -0.3) + theme_classic() 
 lr.plots.plot
 ```
-The reduced model has 1 more stroke prediction, for ~30 less accurate non-stroke predictions
+The reduced model has more stroke prediction, for a number of less accurate non-stroke predictions. Keeping avg_glucose_level increases the overall accuracy-sensitivity mix, even though the variable is at the border of significance.
+
+# Test the model on test set
+
+```{r}
+# LR on test set:
+pred.test.lr = predict(logit.reg, test.lr[,-10], type = "response")
+conf.test.lr = confusionMatrix(as.factor(ifelse(pred.test.lr > cut_off.best, 1, 0)), test.lr$stroke, positive = "1")
+conf.test.lr
+fourfoldplot(confusionMatrix(as.factor(ifelse(pred.test.lr > cut_off.best, 1, 0)), test.lr$stroke, positive = "1")$table, color = c("#CC6666", "#99CC99"))
+
+# Reduced LR on test set:
+pred.test.lr2 = predict(logit.reg2, test.lr[,-10], type = "response")
+conf.test.lr2 = confusionMatrix(as.factor(ifelse(pred.test.lr2 > cut_off.best, 1, 0)), test.lr$stroke, positive = "1")
+conf.test.lr2
+fourfoldplot(confusionMatrix(as.factor(ifelse(pred.test.lr2 > cut_off.best, 1, 0)), test.lr$stroke, positive = "1")$table, color = c("#CC6666", "#99CC99"))
+
+lr.plots[1,3] = conf.test.lr$overall[1]+conf.test.lr$byClass[1]
+lr.plots[2,3] = conf.test.lr2$overall[1]+conf.test.lr2$byClass[1]
+colnames(lr.plots) <- c("method", "valid", "test")
 
 
+lr.test.plots = ggplot(lr.plots, aes(x = method, y= valid)) + geom_col(aes(fill = "Validation"), width = 0.45, position = position_nudge(x = -0.225)) + geom_text(aes(label = round(valid,4)), colour = "grey38", size = 3.5, vjust = -0.3, position = position_nudge(x = -0.225))+ 
+  geom_col(aes(y = test, fill = "Test"), width = 0.45, position = position_nudge(x = 0.225)) + geom_text(aes(label = round(test,4)), colour = "grey38", size = 3.5, vjust = -0.3, position = position_nudge(x = 0.225))+ 
+  ylab("Accuracy Sensitivity mix") + xlab("model") + ggtitle("Best models in Validation & Test set") + theme_classic()
+
+
+lr.test.plots
+```
+
+# Gain & decile for best model
+
+We want to know the performance of the best reduced LR model
+
+```{r}
+outcome = data.frame(actual = valid.lr$stroke, prob = pred.lr2)
+
+lift <- lift(actual ~ prob, data = outcome)
+
+gain <- gains(predicted = outcome$prob, actual = as.numeric(as.character(outcome$actual)), groups=dim(outcome)[1])
+
+gain.decile <- gains(predicted = outcome$prob, actual = as.numeric(as.character(outcome$actual)))
+
+par(mfrow=c(1,2))
+
+plot(c(0, gain$cume.pct.of.total*sum(as.numeric(as.character(outcome$actual)))) ~ c(0, gain$cume.obs),
+xlab = "# cases", ylab = "Cumulative", type="l")
+lines(c(0,sum(as.numeric(as.character(outcome$actual))))~c(0,dim(outcome)[1]), col="gray", lty=2)
+
+barplot(gain.decile$mean.resp / mean(as.numeric(as.character(outcome$actual))), names.arg = gain.decile$depth, xlab = "Percentile", ylab = "Mean Response", main = "Decile-wise lift chart")
+
+```
+
+```{r}
+# ROC curve
+ROC <- roc(outcome$actual, outcome$prob)
+plot.roc(ROC)
+
+# Compute AUC
+auc(ROC)
+```
+The closer the AUC to 1, the better the performance of the model. In our case where sensitivity is more important than specificity, our best reduced LR model does a good job at predicting the majority of stroke without penalizing the overall accuracy.
 
 ################################################################################
 
 
 
-4) LDA - Linear Discriminant Analysis
+#### 6) LDA - Linear Discriminant Analysis
 
-The significant predictors are in order (from most influencer to least) age, hypertension and avg_glucose_level.
+The significant predictors are in order (from most influencer to least) age, hypertension, heart_disease, and avg_glucose_level.
 
 ```{r}
-# Create a test set - 10% of dataset:
-set.seed(1)
-Test <- sample(row.names(Stroke), 0.1*dim(Stroke)[1])
-Test <- Stroke[Test, ]
-Test <- Test[,c(2,3,11)]
-print(table(Test$stroke) / table(Stroke$stroke))
-
-# Draw a colored scatterplot of Experience vs Training, with ggplot2-
-# - with Training on the Y-axis:
-plot.LDA <- ggplot(data=Test, aes(x=age, y=hypertension)) +
-    geom_point(aes(color=stroke)) + labs(title = " Age vs Hypertension") +
-    theme_bw()
+# Draw a colored scatterplot of age and avg_glucose_level:
+plot.LDA <- ggplot(data=valid.lr, aes(x=age, y=hypertension)) +
+    geom_point(aes(color=stroke)) + labs(title = " Age vs Hypertension") + scale_color_manual(values = c("lightblue", "red")) + theme_bw()
 plot.LDA
 ```
 
-The higher the age, the higher the occurrences of strokes (more blue dots on the right).
-In case of hypertension, the likelihood of strokes is also higher (more blue dots top right).
+The higher the age, the higher the occurrences of strokes (more red dots on the right).
+In case of high glucose level, the likelihood of strokes is also higher (a bit more red dots top right).
 
 ```{r}
+set.seed(1)
 # 1) Compute the LDA model using lda() function
-lda <- lda(formula = stroke ~ age + hypertension, data = Test)
+lda <- lda(formula = stroke ~ age + hypertension, data = valid.lr)
 lda
 ```
 
 ```{r}
+set.seed(1)
 # 2) Compute LDA with linDA() function:
-linDA <- linDA(Test[,1:2], Test[,3], prior= c(ratio_0, ratio_1))
+linDA <- linDA(valid.lr[,c(2,3)], valid.lr[,10], prior= c(ratio_0, ratio_1))
 linDA
+```
+```{r}
+# Estimate DA line (book page 300)
+# 1) we must calculate the difference between each classification function coefficients
+a_age = linDA$functions[2,2] - linDA$functions[2,1]
+a_avg_glucose = linDA$functions[3,2] - linDA$functions[3,1]
+# 2) compute the value of intercept and slope
+intercept.DA = a_age/a_avg_glucose * (lda$means[1,1] + lda$means[2,1])/2 + (lda$means[1,2] + lda$means[2,2])/2
+  #(mean(system_admin$Experience) + mean(system_admin$Training))
+slope.DA = - a_age/a_avg_glucose
 
+plot.LDA <- plot.LDA + geom_abline(intercept = intercept.DA, slope = slope.DA, color = "dark green", linetype = "dashed")
+plot.LDA
 ```
 
+Since the cost of misclassifying a stroke is different from the cost of misclassifying a non-stroke, we want to minimize the expected cost of misclassification rather than the simple error rate (which does not account for unequal misclassification costs).
 
-xxx end xxx
+- q(0) the cost of misclassifying a class 0 member (into class 1);
+
+- q(1) the cost of misclassifying a class 1 member (into class 0);
+
+The cost must be integrated into the constants of the classification functions by adding log(q1) to the constant for class 1 (book, page 303). Thus, the score for class 1 membership would increase: observations become more easily classified as stroke (= belonging to class 1) with the modified (increased) constant coefficients, in order to avoid the cost of a mistake (= misclassifying stroke as non-stroke). 
+
+To determine the relationship cost requires domain knowledge: is classifying a non-stroke as stroke 20, 30, 40 times higher, than not detecting it? In medical field, it is the false negatives that are dangerous.
+
+xxx The end xxx
