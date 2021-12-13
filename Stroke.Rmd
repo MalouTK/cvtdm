@@ -1,9 +1,11 @@
 ---
 title: "Project"
-subtitle: "Creating Value Through Data Mining"
 author: "Malou-Tinette Kouango & Veronica Rowe"
 date: "`r Sys.Date()`"
-output: html_document
+output:
+  html_document: default
+  pdf_document: default
+subtitle: Creating Value Through Data Mining
 --- 
 
 NOTE:
@@ -187,7 +189,7 @@ heatmap(x = corr, col = c("firebrick2", "white", "limegreen"), symm = TRUE)
 
 # Preparing the data for analysis : 
 
-````{r}
+```{r, warning= FALSE, message= FALSE}
 # Common data standardization
 # Remove only row with gender = "Other"
 Stroke = Stroke[-3117,]
@@ -199,10 +201,6 @@ Stroke = Stroke[,-5]
 
 # Replace NAs with mean value (column bmi):
 Stroke <- na_mean(Stroke)
-
-# Omit rows with NAs in bmi (since LR and KNN does not consider NAs):
-#Stroke.withNA = Stroke  # keep a copy with NAs
-#Stroke <- na.exclude(Stroke)
 ```
 
 #### 1) Logistic Regression
@@ -431,7 +429,7 @@ fourfoldplot(confusionMatrix(pred.best.pruned, valid.ct$stroke, positive = "1")$
 # Partition for KNN
 
 We partition into 60/40, create dummy variables, change all predictors to numerical and normalize them:
-````{r}
+```{r}
 # Dummify:
 Stroke$stroke <- as.integer(ifelse(Stroke$stroke == "0", 0,1))  # change stroke to int during dummification
 dummies = dummyVars(~ ., data=Stroke)
@@ -440,7 +438,7 @@ Stroke.fltr$stroke = as.factor(Stroke.fltr$stroke)  # change stroke back to fact
 str(Stroke.fltr)
 ```
 
-```{r}
+```{r, warning=FALSE, message=FALSE}
 prop.table(table(Stroke.fltr$stroke))
 
 set.seed(1)
@@ -570,18 +568,20 @@ cut_off.best.ens
 
 accuracy.df = cbind(accuracy.df, ensemble.prob = confusionMatrix(as.factor(ifelse(results.df$average.prob > cut_off.best.ens, 1, 0)), results.df$actual, positive = "1")$overall[1])
 sensitivity.df = cbind(sensitivity.df, ensemble.prob = confusionMatrix(as.factor(ifelse(results.df$average.prob > cut_off.best.ens, 1, 0)), results.df$actual, positive = "1")$byClass[1])
+
+head(results.df)
 ```
 
 
 ```{r, warning=FALSE, message=FALSE}
 accuracy.df.melt = melt(accuracy.df)
-accuracy.plot = ggplot(aes(x=reorder(variable, value), y=value), data = accuracy.df.melt) + geom_col(fill="darkblue") + ylab("accuracy") + xlab("model") +  
-geom_text(aes(label = round(value, 4)), vjust = -0.5) + theme_classic() 
+accuracy.plot = ggplot(aes(x=reorder(variable, value), y=value), data = accuracy.df.melt) + geom_col(fill="lightskyblue") + ylab("accuracy") + xlab("model") +  
+geom_text(aes(label = round(value, 4)), vjust = -0.5, colour = "grey38") + theme_classic() 
 accuracy.plot
 
 sensitivity.df.melt = melt(sensitivity.df)
-sensitivity.plot = ggplot(aes(x=reorder(variable, value), y=value), data = sensitivity.df.melt) + geom_col(fill="darkblue") + ylab("sensitivity") + xlab("model") +  
-geom_text(aes(label = round(value, 4)), vjust = -0.5) + theme_classic() 
+sensitivity.plot = ggplot(aes(x=reorder(variable, value), y=value), data = sensitivity.df.melt) + geom_col(fill="mediumvioletred") + ylab("sensitivity") + xlab("model") +  
+geom_text(aes(label = round(value, 4)), vjust = -0.5, colour = "grey38") + theme_classic() 
 sensitivity.plot
 
 both.melt = accuracy.df.melt
