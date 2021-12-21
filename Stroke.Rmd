@@ -3,23 +3,17 @@ title: "Project"
 author: "Malou-Tinette Kouango & Veronica Rowe"
 date: "`r Sys.Date()`"
 output:
-  html_document: default
   pdf_document: default
+  html_document: default
 subtitle: Creating Value Through Data Mining
 --- 
 
-NOTE:
-
-- Use LDA on categorical variables only?
-- ...
-
----
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
 Project- Stroke Prediction Dataset 
-# Clearing the console
+##Clearing the console
 ```{r, warning = F,message = F, echo = TRUE}
 #clear all the console
 list=ls()
@@ -28,12 +22,12 @@ cat("\014")
 ls()
 ```
 
-#Reading the Stroke dataset
+##Reading the Stroke dataset
 ```{r}
 Stroke <- read.csv(file.choose())
 ```
 
-# Loading the relevant packages
+##Loading the relevant packages
 ```{r, message =FALSE, warning=FALSE}
 library(ggplot2)
 library(corrplot)
@@ -64,11 +58,6 @@ library(pROC)
 str(Stroke)
 ```
 
-We have 12 variables in the Stroke dataset, each having different types. Our outcome variable "Stroke" is a binary outcome, taking value 1 if the person had a stroke and 0 if they haven't had a stroke. => change it as factor
-- Bmi is seen as a character because of the N/A => we must change N/A strings to real NA in R, and set the variable as numeric to be able to visualize it in our exploratory graphs.
-- The variables gender, ever_married, work_type, Residence_type and smoking status are seen as character, when they are categorical => we must change them to factor for better data visualization.
-- The variable id (= id of the patient in the hospital) is irrelevant to our analysis => we remove it
-
 ```{r}
 # Changing N/A characters in bmi to real NA:
 Stroke = replace_with_na(Stroke, replace = list(bmi = "N/A")) # bmi has NA now
@@ -90,10 +79,6 @@ str(Stroke)
 sapply(Stroke, function(x) length(unique(x)))
 summary(Stroke)
 ```
-Using sapply function from TP1 to find out more about the variables. We realise that in gender, there is only one observation as categorised as "Other". 
-
-To simplify our analysis, we will later disregard the row with that observation, as it not significant enough to be taken into consideration (1/5110 = 0.01956947%) (row/observation number id = 56'156/ row = 3117). We will also disregard the ID column as it only represent the patient id in the hospital and thus has no impact on our outcome variable of interest Stroke.
-
 Finding out information on our outcome variable
 ```{r}
 table(Stroke$stroke)
@@ -102,9 +87,6 @@ ratio_1 = 1 - ratio_0
 ratio_0
 ratio_1
 ```
-We see that 249 people had a stroke and 4861 did not. We have an unbalanced binary outcome, with 4861/(4861+249) = 95.1272% non-stroke and only 4.8728% of stroke occurrences.
-
-
 # Data Visualization
 ```{r message=FALSE, warning=FALSE}
 # Visualize the data:
@@ -132,32 +114,6 @@ ggplot(data = Stroke, aes(x = bmi, fill = stroke)) + geom_histogram() + ggtitle(
 # Smoking status:
 ggplot(data = Stroke, aes(x = smoking_status, fill = stroke)) + geom_bar(position="dodge") + ggtitle("Smoking status vs Stroke") + geom_text(aes(label = ..count..), stat = "count", colour = "grey38", size = 3, vjust = -0.3, position = position_dodge(.9))
 ```
-In the histograms, we see that the average age of the patient is in his 40ties and the average glucose and bmi are right-skewed.
-
-First of all, our data visualisation are our assumptions without having explored or analysed the significance of the explanatory variables. Moreover, the outcome variable stoke is unbalanced so we should be wary of these assumptions. We are visualising them & identifying potential explanations in order to have an idea before  going further. 
-
-We see that the levels of males/females having strokes are about the same. However, this needs to be scaled as we also see that there are more women in the sample than men. It is safe to say that men have a higher chance of having a stroke (yet to be determined the effect/in which significance level). 
-
-From the boxplot of Age variable. It is undeniable that the older the person, the higher are their chances of having a stroke (blue boxplot more to the right) and an important difference between both means of both groups. This can be proved also on our histogram. 
-
-Hypertension seems to have an effect, again the scaling is problematic but in relative terms, a lot of patients who suffered a stroke had hypertension. The same for the heart disease but in a way lower importance (blue line in 1 column is less prevalent than in hypertension).
-
-Marriage status, strokes seem to be more common in the people that were/are married. This is due to underlying assumptions, usually married people are older (so maybe it is correlated with age, hypertension, heart disease, that have a higher probability to be the case, denoted by a result of 1, for older people). 
-
-As for the working status, we see that private work type seems to accentuate the likelihood of a strike, however, taking into consideration, the number of observations of that category is way higher so it is logical that stroke probability is also higher. Drop o pas drop ? 
-
-Residence type is pretty evenly distributed and there seems to be a little difference between both categories, therefore, we have decided to drop this variable. 
-
-For the average glucose, We see that a higher level indicates a higher chance of getting a stroke. It is fair to assume that excessive sugar levels are not healthy. This comment is also valid for our dataset.  This same idea is also in the BMI variable, where the difference is not so flagrant but again, medically BMI (even if it is contested) does indicate something about the patient's health status. 
-
-As for the smoking variable, the scaling is again problematic as our outcome variable is unbalanced, we will have to further investigate in order to see the actual impact it has on the likelihood of having a stroke. 
-
-XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
-
-Summary 
-We see that all "medical terms" (hypertension, heart disease, glucose level, BMI, smoking, age)  most of the time have an impact. It is commonly known that the general health status of a person will have an effect on the likelihood of having a stroke/heart attack and other illnesses. Usually, the weaker a person is the higher the chance of them getting sick. This assumption is pretty much satisfied in our data.
-
-We see in the more "social terms" (gender, age, marriage status, work type, residence type). These variables have an impact on the age of the person (that is how they are directly linked to the medical terms & why they can be significant and should be taken into consideration before being potentially taken out by the model). Marriage status is the most clear example as older people usually have a higher chance of being married, the same goes for work type with the "children/never_worked categories connected to a young age" . It must be estimated and analysed in order to not assume spurious correlations. We need the data to back up any assumptions.
 
 # Correlation plots
 ```{r}
@@ -232,13 +188,6 @@ logit.reg <- glm(stroke ~., data = train.lr, family = "binomial")
 options(scipen = 999)
 summary(logit.reg)
 ```
-For variables with NA (self-employed and unknown), they are the defaults dummy values; just like genderFemale is the default dummy of the regression and ever_married_No is the default dummy for ever_married:
-
-- The effect of being male is positive => male have higher propensity of stroke
-- The coefficients effect of the work_type dummies are in comparison to the default value unknown (which is why it has NA).
-- The coefficients effect of the smoking_status dummies are in comparison to the default value self-employed (with NA).
-
-The significant predictors are in order (from most influencer to least) age, hypertension and avg_glucose_level.
 
 ```{r}
 # Graphs for the significant variables
@@ -275,21 +224,14 @@ y_plot4 <- plogis(coefs4[1] + coefs4[2] * x_plot4)
 ggplot(valid.lr) + geom_point(aes(x=avg_glucose_level,y=as.integer(stroke)-1, color=stroke)) + geom_line(aes(x= x_plot4, y=y_plot4), col = "black", data = data.frame(x_plot4,y_plot4)) + xlab("Average glucose") + ylab("Stroke") + labs(title = " Average glucose level vs Stroke") + scale_x_continuous(breaks = seq(0,250,50)) + theme_classic()
 ```
 
-- Age: The older you get, the more probable it is you get a stroke. The first instances of stroke arises around 30 year of age according to the graph; and it start rising the older you get.
-- Average glucose: the progression of the slope is slower and way less impactful than age; this is to be expected as the variable avg_glucose_level has lower significance in the model.
-
 ```{r}
 # Confusion matrix with cut-off 0.5:
 set.seed(1)
 pred.lr = predict(logit.reg, valid.lr[,-10], type = "response")
-confusionMatrix(as.factor(ifelse(pred.lr > 0.5, 1, 0)), valid.lr$stroke, positive = "1")
+conf.lr = confusionMatrix(as.factor(ifelse(pred.lr > 0.5, 1, 0)), valid.lr$stroke, positive = "1")
+conf.lr
 fourfoldplot(confusionMatrix(as.factor(ifelse(pred.lr > 0.5, 1, 0)), valid.lr$stroke, positive = "1")$table, color = c("#CC6666", "#99CC99"))
 ```
-
-This model is not able to predict any stroke; it is not efficient for the goal of our analysis. It is most probable that we have too many unnecessary variables in our model.
-
-The model's goal is to predict stroke. As such, a false positive (saying a patient is likely to get a stroke when they are not) is better than a false negative (saying a patient will not get a stroke when they are actually likely). Thus, sensitivity (rate of true positive) is more important than both specificity (rate of true negative); because detecting a false stroke have less negative consequences than not detecting it (preventive medical monitoring cannot hurt, but not providing them when it could have been useful does).
-
 
 Find the cutoff that maximizes both sensitivity and overall accuracy:
 ```{r, warning=FALSE, message=FALSE}
@@ -303,7 +245,7 @@ for (i in 1:length(cut_off)){
   metrics.lr[i, 3] <- confusionMatrix(x, valid.lr$stroke, positive = "1")$overall[1]
 }
 
-cutoff.plot = ggplot(data= metrics.lr) + geom_line(aes(x=cut_off,y=sensitivity, color="Sensitivity")) + geom_line(aes(x=cut_off,y=accuracy, color = "Accuracy")) + geom_vline(xintercept = 0.057 , linetype="dashed") + theme_classic() + ggtitle("Sensitivity and Accuracy cut-off")
+cutoff.plot = ggplot(data= metrics.lr) + geom_line(aes(x=cut_off,y=sensitivity, color="Sensitivity")) + geom_line(aes(x=cut_off,y=accuracy, color = "Accuracy")) + geom_vline(xintercept = 0.057 , linetype="dashed") + theme_classic() + ggtitle("Sensitivity and Accuracy cut-off (LR)")
 
 cutoff.plot
 metrics.lr$difference = sqrt((metrics.lr$accuracy - metrics.lr$sensitivity)^2)
@@ -311,14 +253,29 @@ cut_off.best = cut_off[which.min(metrics.lr$difference)]
 cut_off.best
 ```
 
-The best cut-off is 0.06; which is closer to the ratio of stroke/non-stroke in presence in this hospital's dataset: 4.8728%.
-
 ```{r}
 # Confusion matrix with best cut-off (0.4):
-conf.lr = confusionMatrix(as.factor(ifelse(pred.lr > cut_off.best, 1, 0)), valid.lr$stroke, positive = "1")
-conf.lr
+conf.lr2 = confusionMatrix(as.factor(ifelse(pred.lr > cut_off.best, 1, 0)), valid.lr$stroke, positive = "1")
+conf.lr2
 fourfoldplot(confusionMatrix(as.factor(ifelse(pred.lr > cut_off.best, 1, 0)), valid.lr$stroke, positive = "1")$table, color = c("#CC6666", "#99CC99"))
 ```
+```{r}
+# LR Comparison
+lr.type = c("LR.binary", "LR.prob")
+acc.lr = c(conf.lr$overall[1], conf.lr2$overall[1])
+sens.lr = c(conf.lr$byClass[1], conf.lr2$byClass[1])
+lr.both.df = data.frame(lr.type, "accuracy" = acc.lr, "sensitivity" = sens.lr)
+
+lr.both.df$sum = lr.both.df$accuracy + lr.both.df$sensitivity
+
+ggplot(aes(x=lr.type, y=sum), data = lr.both.df) + geom_col(fill = "lightblue") + ylab("sum") + xlab("model") + ggtitle("LR mix comparison") + geom_text(aes(label = round(sum,4)), colour = "grey38", size = 4, vjust = -0.3) + theme_classic() 
+```
+
+```{r}
+# Keep the best mix:
+conf.lr = conf.lr2
+```
+
 #### 2) Classification Tree
 
 # Partition for Classification Tree 
@@ -385,8 +342,6 @@ pruned.ct <- prune(c.tree, cp = prune_cp, parms = list(prior= c(ratio_0, ratio_1
 length(pruned.ct$frame$var[pruned.ct$frame$var == "<leaf>"])
 ```
 
-Again, the model is not able to accurately predict strokes due to a highly unbalanced dataset. We must find the best cp, such that it maximizes both sensitivity and accuracy for the model to be able to predict stroke (according to our goal).
-
 ```{r}
 # Find the best cp:
 pred.ct = predict(c.tree, valid.ct, type = "class")
@@ -415,13 +370,53 @@ best.pruned <- prune(c.tree, cp = cp.best)
 pred.best.pruned <- predict(best.pruned, valid.ct, type = "class", parms = list(prior= c(ratio_0, ratio_1)))
 prp(best.pruned)
 ```
-The best pruned tree for predictive stroke is (almost) the full classification tree.
 
 ```{r}
 # Confusion matrix for CT:
 conf.ct = confusionMatrix(pred.best.pruned, valid.ct$stroke, positive = "1")
 conf.ct
 fourfoldplot(confusionMatrix(pred.best.pruned, valid.ct$stroke, positive = "1")$table, color = c("#CC6666", "#99CC99"))
+```
+
+```{r, warning=FALSE, message=FALSE}
+
+pred.ct.prob = predict(best.pruned, valid.ct, type = "prob", parms = list(prior= c(ratio_0, ratio_1)))[,2]
+
+# CT: Find the best cut-off:
+cut_off.ct = seq(0.01,0.99,0.01)
+metrics.ct.prob <- data.frame(cut_off.ct, sensitivity = rep(0, length(cut_off.ct)), accuracy = rep(0, length(cut_off.ct)))
+
+for (i in 1:length(cut_off.ct)){
+  x <- as.factor(ifelse(pred.ct.prob >= cut_off.ct[i],1,0))
+  metrics.ct.prob[i, 2] <- confusionMatrix(x, valid.lr$stroke, positive = "1")$byClass[1]
+  metrics.ct.prob[i, 3] <- confusionMatrix(x, valid.lr$stroke, positive = "1")$overall[1]
+}
+
+cutoff.plot.ct = ggplot(data= metrics.ct.prob) + geom_line(aes(x=cut_off.ct,y=sensitivity, color="Sensitivity")) + geom_line(aes(x=cut_off.ct,y=accuracy, color = "Accuracy")) + theme_classic() + ggtitle("Sensitivity and Accuracy cut-off (CT)")
+
+cutoff.plot.ct
+metrics.ct.prob$difference = sqrt((metrics.ct.prob$accuracy - metrics.ct.prob$sensitivity)^2)
+cut_off.ct.best = cut_off.ct[which.min(metrics.ct.prob$difference)]
+cut_off.ct.best
+```
+
+```{r}
+# Confusion matrix (final)
+conf.ct2 = confusionMatrix(as.factor(ifelse(pred.ct.prob > cut_off.ct.best, 1, 0)), valid.ct$stroke, positive = "1")
+conf.ct2
+fourfoldplot(confusionMatrix(as.factor(ifelse(pred.ct.prob > cut_off.ct.best, 1, 0)), valid.ct$stroke, positive = "1")$table, color = c("#CC6666", "#99CC99"))
+```
+
+```{r}
+# CT Comparison
+ct.type = c("CT.binary", "CT.prob")
+acc.ct = c(conf.ct$overall[1], conf.ct2$overall[1])
+sens.ct = c(conf.ct$byClass[1], conf.ct2$byClass[1])
+ct.both.df = data.frame(ct.type, "accuracy" = acc.ct, "sensitivity" = sens.ct)
+
+ct.both.df$sum = ct.both.df$accuracy + ct.both.df$sensitivity
+
+ggplot(aes(x=ct.type, y=sum), data = ct.both.df) + geom_col(fill = "lightblue") + ylab("sum") + xlab("model") + ggtitle("CT mix comparison") + geom_text(aes(label = round(sum,4)), colour = "grey38", size = 4, vjust = -0.3) + theme_classic() 
 ```
 
 #### 3) KNN
@@ -500,7 +495,6 @@ metrics.knn$difference = sqrt((metrics.knn$accuracy - metrics.knn$sensitivity)^2
 k.best = metrics.knn$k[which.min(metrics.knn$difference)]
 k.best
 ```
-The best k is 2, which is logical for such an unbalanced dataset. Indeed, the higher the value of k (= number of reference neighbors), the higher the chance of belonging to the majority group, especially in our case where non-stroke represents 95% of observations. So in case of unbalanced dataset, instead of faulting the results (with a bias due to a lack of diversity), a lower k helps being more precise.
 
 ```{r}
 ### Creating the confusion Matrix --> need just to change the K = 1 & the 21 corresponds to the stroke variable. 
@@ -512,12 +506,58 @@ conf.knn
 fourfoldplot(confusionMatrix(pred.knn, valid.norm.knn[, 18], positive = "1")$table, color = c("#CC6666", "#99CC99"))
 ```
 
+```{r, warning=FALSE, message=FALSE}
+
+pred.knn.prob = attr(pred.knn, "prob")
+
+# KNN: Find the best cut-off:
+cut_off.knn = seq(0.01,0.99,0.01)
+metrics.knn.prob <- data.frame(cut_off.knn, sensitivity = rep(0, length(cut_off.knn)), accuracy = rep(0, length(cut_off.knn)))
+
+for (i in 1:length(cut_off.knn)){
+  x <- as.factor(ifelse(pred.knn.prob >= cut_off.knn[i],1,0))
+  metrics.knn.prob[i, 2] <- confusionMatrix(x, valid.lr$stroke, positive = "1")$byClass[1]
+  metrics.knn.prob[i, 3] <- confusionMatrix(x, valid.lr$stroke, positive = "1")$overall[1]
+}
+
+cutoff.plot.knn = ggplot(data= metrics.knn.prob) + geom_line(aes(x=cut_off.knn,y=sensitivity, color="Sensitivity")) + geom_line(aes(x=cut_off.knn,y=accuracy, color = "Accuracy")) + geom_vline(xintercept = 0.51 , linetype="dashed") + theme_classic() + ggtitle("Sensitivity and Accuracy cut-off (K-nn)")
+
+cutoff.plot.knn
+metrics.knn.prob$difference = sqrt((metrics.knn.prob$accuracy - metrics.knn.prob$sensitivity)^2)
+cut_off.knn.best = cut_off.knn[which.min(metrics.knn.prob$difference)]
+cut_off.knn.best
+```
+
+```{r}
+# Confusion matrix (final)
+conf.knn2 = confusionMatrix(as.factor(ifelse(pred.knn.prob > cut_off.knn.best, 1, 0)), valid.ct$stroke, positive = "1")
+conf.knn2
+fourfoldplot(confusionMatrix(as.factor(ifelse(pred.knn.prob > cut_off.knn.best, 1, 0)), valid.ct$stroke, positive = "1")$table, color = c("#CC6666", "#99CC99"))
+```
+
+```{r}
+# KNN Comparison
+knn.type = c("KNN.binary", "KNN.prob")
+acc.knn = c(conf.knn$overall[1], conf.knn2$overall[1])
+sens.knn = c(conf.knn$byClass[1], conf.knn2$byClass[1])
+knn.both.df = data.frame(knn.type, "accuracy" = acc.knn, "sensitivity" = sens.knn)
+
+knn.both.df$sum = knn.both.df$accuracy + knn.both.df$sensitivity
+
+ggplot(aes(x=knn.type, y=sum), data = knn.both.df) + geom_col(fill = "lightblue") + ylab("sum") + xlab("model") + ggtitle("KNN mix comparison") + geom_text(aes(label = round(sum,4)), colour = "grey38", size = 4, vjust = -0.3) + theme_classic() 
+```
+
+```{r}
+# Keep the best mix:
+conf.knn = conf.knn2
+```
+
 #### 4) Ensemble methods
 
 ```{r}
-pred.ct.prob = predict(best.pruned, valid.ct, type = "prob", parms = list(prior= c(ratio_0, ratio_1)))[,2]
+#pred.ct.prob = predict(best.pruned, valid.ct, type = "prob", parms = list(prior= c(ratio_0, ratio_1)))[,2]
 
-pred.knn.prob = attr(pred.knn, "prob")
+#pred.knn.prob = attr(pred.knn, "prob")
   
 # LR:
 results.df = data.frame(actual = valid.lr$stroke, lr.binary = as.factor(ifelse(pred.lr > cut_off.best, 1, 0)), lr.prob = pred.lr, ct.binary = pred.ct, ct.prob = pred.ct.prob, knn.binary = pred.knn, knn.prob = pred.knn.prob)
@@ -558,7 +598,7 @@ for (i in 1:length(cut_off.ens)){
   metrics.ens[i, 3] <- confusionMatrix(x, results.df$actual, positive = "1")$overall[1]
 }
 
-cutoff.plot.ens = ggplot(data= metrics.ens) + geom_line(aes(x=cut_off.ens,y=sensitivity, color="Sensitivity")) + geom_line(aes(x=cut_off.ens,y=accuracy, color = "Accuracy")) + geom_vline(xintercept = 0.03 , linetype="dashed") + theme_classic() + ggtitle("Sensitivity and Accuracy cut-off")
+cutoff.plot.ens = ggplot(data= metrics.ens) + geom_line(aes(x=cut_off.ens,y=sensitivity, color="Sensitivity")) + geom_line(aes(x=cut_off.ens,y=accuracy, color = "Accuracy")) + geom_vline(xintercept = 0.03 , linetype="dashed") + theme_classic() + ggtitle("Sensitivity and Accuracy cut-off (ensembles)")
 
 cutoff.plot.ens
 metrics.ens$difference = sqrt((metrics.ens$accuracy - metrics.ens$sensitivity)^2)
@@ -609,12 +649,6 @@ both.plot = ggplot(aes(x=method, y=sum), data = both.df) + geom_col(fill = "dark
 both.plot
 ```
 
-COMPARISON OF ALL METHODS:
-As the results of the full models of the CT and KNN are so low in sensitivity, there are inadequate for this highly unbalanced dataset. Therefore, our assumption was that doing a ensemble method by majority & average would be counterproductive, as the results yield would be lower than the logistic regression.
-The ensemble prob method, that allows for a cutoff, is actually much better than we thought. Its balanced predictive power is good, though still lower than LR.
-=> Blindly, ensemble methods allow for a good result.
-
-
 #### 5) Best model: Prediction
 
 LR is the best fitted model => use this method as the basis for prediction.
@@ -639,7 +673,6 @@ lr.plots[2,2] = conf.lr2$overall[1]+conf.lr2$byClass[1]
 lr.plots.plot = ggplot(aes(x=method, y=sum), data = lr.plots) + geom_col(fill = "darkviolet") + ylab("sum") + xlab("model") + ggtitle("LR VS reduced LR") + geom_text(aes(label = round(sum,4)), colour = "grey38", size = 4, vjust = -0.3) + theme_classic() 
 lr.plots.plot
 ```
-The reduced model has more stroke prediction, for a number of less accurate non-stroke predictions. Keeping avg_glucose_level increases the overall accuracy-sensitivity mix, even though the variable is at the border of significance.
 
 # Test the model on test set
 
@@ -700,11 +733,6 @@ plot.roc(ROC)
 # Compute AUC
 auc(ROC)
 ```
-The closer the AUC to 1, the better the performance of the model. In our case where sensitivity is more important than specificity, our best reduced LR model does a good job at predicting the majority of stroke without penalizing the overall accuracy.
-
-################################################################################
-
-
 
 #### 6) LDA - Linear Discriminant Analysis
 
@@ -716,9 +744,6 @@ plot.LDA <- ggplot(data=valid.lr, aes(x=age, y=hypertension)) +
     geom_point(aes(color=stroke)) + labs(title = " Age vs Hypertension") + scale_color_manual(values = c("lightblue", "red")) + theme_bw()
 plot.LDA
 ```
-
-The higher the age, the higher the occurrences of strokes (more red dots on the right).
-In case of high glucose level, the likelihood of strokes is also higher (a bit more red dots top right).
 
 ```{r}
 set.seed(1)
@@ -756,5 +781,3 @@ Since the cost of misclassifying a stroke is different from the cost of misclass
 The cost must be integrated into the constants of the classification functions by adding log(q1) to the constant for class 1 (book, page 303). Thus, the score for class 1 membership would increase: observations become more easily classified as stroke (= belonging to class 1) with the modified (increased) constant coefficients, in order to avoid the cost of a mistake (= misclassifying stroke as non-stroke). 
 
 To determine the relationship cost requires domain knowledge: is classifying a non-stroke as stroke 20, 30, 40 times higher, than not detecting it? In medical field, it is the false negatives that are dangerous.
-
-xxx The end xxx
